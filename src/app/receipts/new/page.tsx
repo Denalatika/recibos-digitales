@@ -6,24 +6,19 @@ import Link from 'next/link';
 import { 
   ArrowLeft, 
   Save, 
-  Printer, 
-  Download, 
   Plus, 
   Trash2, 
   CheckCircle2, 
   ShieldCheck, 
   AlertCircle,
-  Eye,
-  FileText,
   UserPlus
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/app-layout';
-import { ReceiptTemplate } from '@/components/receipt/receipt-template';
+import { PrintableReceiptContainer } from '@/components/receipt/printable-receipt-container';
 import { ImageUploader } from '@/components/ui/image-uploader';
 import { QuickAddPersonModal } from '@/components/people/quick-add-person-modal';
 import { useApp } from '@/context/app-context';
-import { calculateTotals, formatCurrency, generateVerificationCode } from '@/lib/utils';
-import { downloadReceiptAsPdf } from '@/lib/pdf-generator';
+import { calculateTotals, formatCurrency } from '@/lib/utils';
 import { 
   Receipt, 
   ReceiptType, 
@@ -78,7 +73,16 @@ function NewReceiptForm() {
   ]);
 
   const [activeTab, setActiveTab] = useState<'general' | 'earnings' | 'deductions' | 'payment'>('general');
-  const [isDownloading, setIsDownloading] = useState(false);
+
+  // Actualizar datos bancarios al cambiar de persona
+  const handlePersonChange = useCallback((newPersonId: string) => {
+    setPersonId(newPersonId);
+    const p = activeCompanyPeople.find(person => person.id === newPersonId);
+    if (p) {
+      if (p.bank_name) setBankName(p.bank_name);
+      if (p.bank_account_masked) setBankAccountMasked(p.bank_account_masked);
+    }
+  }, [activeCompanyPeople]);
 
   // Preselección por URL query param (?personId=...)
   useEffect(() => {
@@ -86,21 +90,11 @@ function NewReceiptForm() {
     if (paramPersonId) {
       handlePersonChange(paramPersonId);
     }
-  }, [searchParams]);
+  }, [searchParams, handlePersonChange]);
 
   // Cálculos reactivos
   const totals = calculateTotals(earnings, deductions);
   const selectedPerson = activeCompanyPeople.find(p => p.id === personId) || selectedPersonDefault;
-
-  // Actualizar datos bancarios al cambiar de persona
-  const handlePersonChange = (newPersonId: string) => {
-    setPersonId(newPersonId);
-    const p = activeCompanyPeople.find(person => person.id === newPersonId);
-    if (p) {
-      if (p.bank_name) setBankName(p.bank_name);
-      if (p.bank_account_masked) setBankAccountMasked(p.bank_account_masked);
-    }
-  };
 
   // Manejadores de Percepciones
   const addEarningRow = () => {
@@ -199,20 +193,6 @@ function NewReceiptForm() {
     router.push(`/receipts/${saved.id}`);
   };
 
-  const handleDownloadPdf = async () => {
-    try {
-      setIsDownloading(true);
-      await downloadReceiptAsPdf({
-        elementId: 'live-receipt-container',
-        filename: `RECIBO_${activeCompany?.folio_prefix}_${liveReceipt.folio}_${selectedPerson?.full_name?.replace(/\s+/g, '_') || 'RECIBO'}.pdf`
-      });
-    } catch (err) {
-      alert('Error al generar PDF: ' + err);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -258,23 +238,6 @@ function NewReceiptForm() {
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Marcar Pagado y Guardar</span>
-            </button>
-
-            <button
-              onClick={() => window.print()}
-              className="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2 px-3 rounded-lg shadow-sm transition-colors"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Imprimir</span>
-            </button>
-
-            <button
-              onClick={handleDownloadPdf}
-              disabled={isDownloading}
-              className="flex items-center space-x-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-2 px-3 rounded-lg shadow-sm transition-colors disabled:opacity-50"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>{isDownloading ? 'Generando...' : 'Descargar PDF'}</span>
             </button>
           </div>
         </div>
@@ -670,18 +633,7 @@ function NewReceiptForm() {
 
           {/* Panel Derecho: Vista Previa en Vivo de Alta Fidelidad (7 cols) */}
           <div className="xl:col-span-7 space-y-3 print:w-full print:max-w-none print:m-0 print:p-0 print:block print:space-y-0">
-            <div className="flex items-center justify-between no-print">
-              <div className="flex items-center space-x-2 text-xs font-bold text-slate-700">
-                <Eye className="w-4 h-4 text-cyan-600" />
-                <span>Vista Previa en Vivo (Formato Carta Horizontal)</span>
-              </div>
-              <span className="text-[11px] text-slate-400">Idéntica a la impresión final</span>
-            </div>
-
-            {/* Contenedor del Recibo para PDF e Impresión */}
-            <div id="live-receipt-container" className="overflow-x-auto p-1 bg-slate-200/50 rounded-2xl border border-slate-300 print:p-0 print:bg-transparent print:border-none print:rounded-none print:shadow-none print:overflow-visible">
-              <ReceiptTemplate receipt={liveReceipt} />
-            </div>
+            <PrintableReceiptContainer receipt={liveReceipt} showControls={true} />
           </div>
         </div>
 

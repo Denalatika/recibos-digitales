@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
   ArrowLeft, 
-  Printer, 
-  Download, 
   Share2, 
   Edit3, 
   Copy, 
@@ -17,9 +15,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/app-layout';
-import { ReceiptTemplate } from '@/components/receipt/receipt-template';
+import { PrintableReceiptContainer } from '@/components/receipt/printable-receipt-container';
 import { useApp } from '@/context/app-context';
-import { downloadReceiptAsPdf } from '@/lib/pdf-generator';
 import { ReceiptStatus } from '@/types/database';
 
 export function ReceiptDetailClient({ id }: { id: string }) {
@@ -27,7 +24,6 @@ export function ReceiptDetailClient({ id }: { id: string }) {
   const { getReceipt, updateReceiptStatus, duplicateReceipt, createShareLink } = useApp();
 
   const receipt = getReceipt(id);
-  const [isDownloading, setIsDownloading] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareInfo, setShareInfo] = useState<{ token: string; url: string; expiresAt: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -50,20 +46,6 @@ export function ReceiptDetailClient({ id }: { id: string }) {
       </AppLayout>
     );
   }
-
-  const handleDownloadPdf = async () => {
-    try {
-      setIsDownloading(true);
-      await downloadReceiptAsPdf({
-        elementId: 'receipt-detail-container',
-        filename: `RECIBO_${receipt.company?.folio_prefix || 'DOC'}_${receipt.folio}_${receipt.person?.full_name?.replace(/\s+/g, '_') || 'RECIBO'}.pdf`
-      });
-    } catch (err) {
-      alert('Error al generar PDF: ' + err);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
 
   const handleOpenShareModal = () => {
     const info = createShareLink(receipt.id, 72);
@@ -158,30 +140,11 @@ export function ReceiptDetailClient({ id }: { id: string }) {
               <Share2 className="w-3.5 h-3.5" />
               <span>Compartir</span>
             </button>
-
-            <button
-              onClick={() => window.print()}
-              className="flex items-center space-x-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs py-2 px-3 rounded-lg shadow-sm transition-colors"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Imprimir</span>
-            </button>
-
-            <button
-              onClick={handleDownloadPdf}
-              disabled={isDownloading}
-              className="flex items-center space-x-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-2 px-3 rounded-lg shadow-sm transition-colors disabled:opacity-50"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>{isDownloading ? 'Generando...' : 'Descargar PDF'}</span>
-            </button>
           </div>
         </div>
 
-        {/* Hoja de Recibo */}
-        <div id="receipt-detail-container" className="p-2 bg-slate-100/60 rounded-2xl border border-slate-200/80 overflow-x-auto print:p-0 print:bg-transparent print:border-none print:rounded-none print:shadow-none print:overflow-visible">
-          <ReceiptTemplate receipt={receipt} />
-        </div>
+        {/* Contenedor de Impresión y Vista Previa con Selector de Formato */}
+        <PrintableReceiptContainer receipt={receipt} />
 
         {/* Modal de Compartir Enlace Temporal Seguro */}
         {shareModalOpen && shareInfo && (

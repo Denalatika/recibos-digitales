@@ -6,20 +6,17 @@ import Link from 'next/link';
 import { 
   ArrowLeft, 
   Save, 
-  Download, 
   Plus, 
   Trash2, 
   CheckCircle2, 
-  Eye,
   UserPlus
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/app-layout';
-import { ReceiptTemplate } from '@/components/receipt/receipt-template';
+import { PrintableReceiptContainer } from '@/components/receipt/printable-receipt-container';
 import { ImageUploader } from '@/components/ui/image-uploader';
 import { QuickAddPersonModal } from '@/components/people/quick-add-person-modal';
 import { useApp } from '@/context/app-context';
 import { calculateTotals } from '@/lib/utils';
-import { downloadReceiptAsPdf } from '@/lib/pdf-generator';
 import { 
   Receipt, 
   ReceiptType, 
@@ -59,7 +56,6 @@ export function ReceiptEditClient({ id }: { id: string }) {
   const [earnings, setEarnings] = useState<ReceiptEarning[]>(originalReceipt?.earnings || []);
   const [deductions, setDeductions] = useState<ReceiptDeduction[]>(originalReceipt?.deductions || []);
   const [activeTab, setActiveTab] = useState<'general' | 'earnings' | 'deductions' | 'payment'>('general');
-  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     if (originalReceipt) {
@@ -179,20 +175,6 @@ export function ReceiptEditClient({ id }: { id: string }) {
     router.push(`/receipts/${originalReceipt.id}`);
   };
 
-  const handleDownloadPdf = async () => {
-    try {
-      setIsDownloading(true);
-      await downloadReceiptAsPdf({
-        elementId: 'live-receipt-edit-container',
-        filename: `RECIBO_${originalReceipt.folio}_EDITADO.pdf`
-      });
-    } catch (err) {
-      alert('Error al generar PDF: ' + err);
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -230,15 +212,6 @@ export function ReceiptEditClient({ id }: { id: string }) {
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Guardar y Marcar Pagado</span>
-            </button>
-
-            <button
-              onClick={handleDownloadPdf}
-              disabled={isDownloading}
-              className="flex items-center space-x-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-2 px-3 rounded-lg shadow-sm transition-colors disabled:opacity-50"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>{isDownloading ? 'Generando...' : 'Descargar PDF'}</span>
             </button>
           </div>
         </div>
@@ -528,9 +501,7 @@ export function ReceiptEditClient({ id }: { id: string }) {
 
           {/* Panel Derecho: Vista Previa */}
           <div className="xl:col-span-7 space-y-3 print:w-full print:max-w-none print:m-0 print:p-0 print:block print:space-y-0">
-            <div id="live-receipt-edit-container" className="overflow-x-auto p-1 bg-slate-200/50 rounded-2xl border border-slate-300 print:p-0 print:bg-transparent print:border-none print:rounded-none print:shadow-none print:overflow-visible">
-              <ReceiptTemplate receipt={liveReceipt} />
-            </div>
+            <PrintableReceiptContainer receipt={liveReceipt} showControls={true} />
           </div>
         </div>
 

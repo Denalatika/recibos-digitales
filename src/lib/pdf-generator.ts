@@ -6,9 +6,14 @@ import html2canvas from 'html2canvas';
 interface DownloadPdfOptions {
   elementId: string;
   filename?: string;
+  orientation?: 'landscape' | 'portrait';
 }
 
-export async function downloadReceiptAsPdf({ elementId, filename = 'recibo.pdf' }: DownloadPdfOptions) {
+export async function downloadReceiptAsPdf({ 
+  elementId, 
+  filename = 'recibo.pdf',
+  orientation = 'portrait'
+}: DownloadPdfOptions) {
   const element = document.getElementById(elementId);
   if (!element) {
     throw new Error(`Elemento con ID "${elementId}" no encontrado.`);
@@ -25,10 +30,9 @@ export async function downloadReceiptAsPdf({ elementId, filename = 'recibo.pdf' 
 
   const imgData = canvas.toDataURL('image/png');
   
-  // Crear documento PDF en orientación horizontal (Landscape)
-  // Tamaño carta: 279.4 x 215.9 mm
+  // Crear documento PDF en orientación seleccionada (Letter)
   const pdf = new jsPDF({
-    orientation: 'landscape',
+    orientation: orientation,
     unit: 'mm',
     format: 'letter',
   });
@@ -36,7 +40,7 @@ export async function downloadReceiptAsPdf({ elementId, filename = 'recibo.pdf' 
   const pdfWidth = pdf.internal.pageSize.getWidth();
   const pdfHeight = pdf.internal.pageSize.getHeight();
 
-  const margin = 8;
+  const margin = 6;
   const printableWidth = pdfWidth - margin * 2;
   const printableHeight = pdfHeight - margin * 2;
 

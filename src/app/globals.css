@@ -14,10 +14,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Configuración Oficial de Hoja Tamaño Carta Horizontal */
+/* Configuración Oficial de Hoja Tamaño Carta */
 @page {
-  size: letter landscape;
-  margin: 4mm 6mm 4mm 6mm;
+  size: letter portrait;
+  margin: 4mm 6mm;
 }
 
 /* Reglas Estrictas de Impresión para Calidad de Documento */
@@ -37,7 +37,7 @@ body {
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
-    font-size: 12px;
+    font-size: 11px;
   }
 
   /* Ocultar elementos de interfaz ajenos al comprobante */
@@ -73,6 +73,7 @@ body {
     padding: 0 !important;
   }
 
+  #printable-area-target,
   #live-receipt-container,
   #receipt-detail-container,
   #live-receipt-edit-container,
@@ -84,6 +85,18 @@ body {
     box-shadow: none !important;
     width: 100% !important;
     overflow: visible !important;
+  }
+
+  .print-dual-container {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    gap: 4px !important;
+    height: 100% !important;
+    max-height: 270mm !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
   }
 
   /* Hoja del Recibo */
