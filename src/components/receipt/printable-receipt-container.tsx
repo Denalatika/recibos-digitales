@@ -41,19 +41,82 @@ export function PrintableReceiptContainer({
 
   return (
     <div className="space-y-4">
-      {/* Inyección de regla @page según el formato seleccionado */}
+      {/* Inyección de regla @page y estilos de impresión según el formato seleccionado */}
       <style jsx global>{`
         @page {
-          size: ${printLayout === 'dual' ? 'letter portrait' : 'letter landscape'};
-          margin: ${printLayout === 'dual' ? '4mm 6mm' : '4mm 6mm'};
+          size: ${printLayout === 'dual' ? 'letter portrait' : 'letter landscape'} !important;
+          margin: ${printLayout === 'dual' ? '4mm 5mm' : '4mm 6mm'} !important;
         }
         @media print {
+          html, body {
+            width: 100% !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            overflow: visible !important;
+          }
+
+          /* Ocultar elementos de interfaz ajenos */
+          body * {
+            visibility: hidden;
+          }
+
+          /* Hacer visible el contenedor de impresión e hijos */
+          #printable-area-target,
+          #printable-area-target * {
+            visibility: visible !important;
+          }
+
+          #printable-area-target {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            border: none !important;
+            box-shadow: none !important;
+            display: block !important;
+          }
+
           .print-dual-container {
             display: flex !important;
             flex-direction: column !important;
-            justify-content: space-between !important;
-            height: 100vh !important;
-            max-height: 270mm !important;
+            justify-content: flex-start !important;
+            gap: 2mm !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            page-break-after: avoid !important;
+          }
+
+          .print-dual-item {
+            width: 100% !important;
+            max-width: 100% !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+
+          .print-cut-line {
+            margin: 1.5mm 0 !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+
+          .receipt-sheet {
+            width: 100% !important;
+            max-width: 100% !important;
+            border: 1px solid #94a3b8 !important;
+            border-radius: 4px !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            transform: none !important;
           }
         }
       `}</style>
@@ -62,7 +125,7 @@ export function PrintableReceiptContainer({
       {showControls && (
         <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm no-print">
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-bold text-slate-600">Formato de Impresión:</span>
+            <span className="text-xs font-bold text-slate-600">Formato:</span>
             <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100">
               <button
                 type="button"
@@ -118,12 +181,12 @@ export function PrintableReceiptContainer({
       {/* Área Imprimible / Vista Previa */}
       <div 
         id="printable-area-target"
-        className="p-3 bg-slate-100/60 rounded-2xl border border-slate-200/80 overflow-x-auto print:p-0 print:bg-transparent print:border-none print:shadow-none"
+        className="p-3 bg-slate-100/60 rounded-2xl border border-slate-200/80 overflow-x-auto print:p-0 print:bg-transparent print:border-none print:shadow-none print:m-0"
       >
         {printLayout === 'dual' ? (
-          <div className="print-dual-container space-y-4 print:space-y-1 max-w-[1000px] mx-auto">
+          <div className="print-dual-container space-y-3 print:space-y-0 w-full max-w-[1000px] mx-auto">
             {/* 1er Tanto: Original */}
-            <div>
+            <div className="print-dual-item">
               <ReceiptTemplate 
                 receipt={receipt} 
                 companyOverride={companyOverride}
@@ -134,16 +197,16 @@ export function PrintableReceiptContainer({
             </div>
 
             {/* Línea de corte / talón */}
-            <div className="relative py-2 print:py-1 flex items-center justify-center select-none">
+            <div className="print-cut-line relative py-1.5 print:py-1 flex items-center justify-center select-none">
               <div className="border-t-2 border-dashed border-slate-300 print:border-slate-400 w-full"></div>
-              <span className="absolute bg-white px-3 text-[10px] font-mono text-slate-500 flex items-center space-x-1.5 border border-slate-200 print:border-slate-300 rounded-full shadow-xs">
+              <span className="absolute bg-white px-3 text-[9px] font-mono text-slate-500 flex items-center space-x-1 border border-slate-200 print:border-slate-300 rounded-full shadow-xs">
                 <Scissors className="w-3 h-3 text-slate-400" />
                 <span>LÍNEA DE CORTE • COPIA COLABORADOR</span>
               </span>
             </div>
 
             {/* 2do Tanto: Copia */}
-            <div>
+            <div className="print-dual-item">
               <ReceiptTemplate 
                 receipt={receipt} 
                 companyOverride={companyOverride}
@@ -154,7 +217,7 @@ export function PrintableReceiptContainer({
             </div>
           </div>
         ) : (
-          <div className="max-w-[1050px] mx-auto">
+          <div className="max-w-[1050px] mx-auto w-full">
             <ReceiptTemplate 
               receipt={receipt} 
               companyOverride={companyOverride}

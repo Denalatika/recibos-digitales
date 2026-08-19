@@ -17,7 +17,7 @@ body {
 /* Configuración Oficial de Hoja Tamaño Carta */
 @page {
   size: letter portrait;
-  margin: 4mm 6mm;
+  margin: 4mm 5mm;
 }
 
 /* Reglas Estrictas de Impresión para Calidad de Documento */
@@ -37,7 +37,6 @@ body {
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
-    font-size: 11px;
   }
 
   /* Ocultar elementos de interfaz ajenos al comprobante */
@@ -56,21 +55,12 @@ body {
     display: block !important;
   }
 
-  /* Liberar contenedores principales */
-  main {
+  /* Liberar contenedores principales y anular restricciones de layout flex/grid */
+  main, .flex-1, .grid {
     padding: 0 !important;
     margin: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
-    display: block !important;
-  }
-
-  .print-full-width {
-    width: 100% !important;
-    max-width: 100% !important;
-    display: block !important;
-    margin: 0 !important;
-    padding: 0 !important;
   }
 
   #printable-area-target,
@@ -84,25 +74,39 @@ body {
     margin: 0 !important;
     box-shadow: none !important;
     width: 100% !important;
+    max-width: 100% !important;
     overflow: visible !important;
   }
 
   .print-dual-container {
     display: flex !important;
     flex-direction: column !important;
-    justify-content: space-between !important;
-    gap: 4px !important;
-    height: 100% !important;
-    max-height: 270mm !important;
+    justify-content: flex-start !important;
+    gap: 2mm !important;
+    width: 100% !important;
+    max-width: 100% !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     page-break-after: avoid !important;
   }
 
+  .print-dual-item {
+    width: 100% !important;
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .print-cut-line {
+    margin: 1mm 0 !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
   /* Hoja del Recibo */
   .receipt-sheet {
     box-shadow: none !important;
-    border: 1px solid #cbd5e1 !important;
+    border: 1px solid #94a3b8 !important;
     border-radius: 4px !important;
     margin: 0 auto !important;
     padding: 0 !important;
