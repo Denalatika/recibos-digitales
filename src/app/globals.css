@@ -14,11 +14,19 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Reglas Estrictas de Impresión */
+/* Configuración Oficial de Hoja Tamaño Carta Horizontal */
+@page {
+  size: letter landscape;
+  margin: 4mm 6mm 4mm 6mm;
+}
+
+/* Reglas Estrictas de Impresión para Calidad de Documento */
 @media print {
-  @page {
-    size: letter landscape;
-    margin: 6mm 8mm 6mm 8mm;
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    box-sizing: border-box !important;
   }
 
   html, body {
@@ -28,16 +36,19 @@ body {
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
+    overflow: visible !important;
+    font-size: 12px;
   }
 
+  /* Ocultar elementos de interfaz ajenos al comprobante */
   .no-print,
   nav,
   header:not(.receipt-header),
   aside,
   button,
-  .print-hide {
+  .print-hide,
+  #sidebar,
+  #navbar {
     display: none !important;
   }
 
@@ -45,18 +56,67 @@ body {
     display: block !important;
   }
 
+  /* Liberar contenedores principales */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    display: block !important;
+  }
+
+  .print-full-width {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  #live-receipt-container,
+  #receipt-detail-container,
+  #live-receipt-edit-container,
+  #shared-receipt-container {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  /* Hoja del Recibo */
   .receipt-sheet {
     box-shadow: none !important;
-    border: none !important;
-    margin: 0 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 4px !important;
+    margin: 0 auto !important;
     padding: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    transform: none !important;
+  }
+
+  /* Mantener layout de columnas internas del recibo */
+  .receipt-sheet .grid {
+    display: grid !important;
+  }
+
+  .receipt-sheet .flex {
+    display: flex !important;
+  }
+
+  /* Corte diagonal garantizado en impresión */
+  .receipt-header-polygon {
+    clip-path: polygon(0 0, 100% 0, 88% 100%, 0 100%) !important;
   }
 }
 
-/* Corte diagonal para el encabezado del recibo */
+/* Corte diagonal para el encabezado del recibo en pantalla */
 .receipt-header-polygon {
   clip-path: polygon(0 0, 100% 0, 88% 100%, 0 100%);
 }

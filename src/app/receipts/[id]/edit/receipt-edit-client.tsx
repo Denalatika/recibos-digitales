@@ -244,7 +244,7 @@ export function ReceiptEditClient({ id }: { id: string }) {
         </div>
 
         {/* Layout Split-Screen */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start print:block print:w-full print:m-0 print:p-0">
           {/* Panel Izquierdo: Formulario */}
           <div className="xl:col-span-5 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden no-print">
             <div className="flex border-b border-slate-200 bg-slate-50 text-xs font-bold">
@@ -527,8 +527,8 @@ export function ReceiptEditClient({ id }: { id: string }) {
           </div>
 
           {/* Panel Derecho: Vista Previa */}
-          <div className="xl:col-span-7 space-y-3">
-            <div id="live-receipt-edit-container" className="overflow-x-auto p-1 bg-slate-200/50 rounded-2xl border border-slate-300">
+          <div className="xl:col-span-7 space-y-3 print:w-full print:max-w-none print:m-0 print:p-0 print:block print:space-y-0">
+            <div id="live-receipt-edit-container" className="overflow-x-auto p-1 bg-slate-200/50 rounded-2xl border border-slate-300 print:p-0 print:bg-transparent print:border-none print:rounded-none print:shadow-none print:overflow-visible">
               <ReceiptTemplate receipt={liveReceipt} />
             </div>
           </div>

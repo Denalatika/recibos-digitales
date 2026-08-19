@@ -290,7 +290,7 @@ function NewReceiptForm() {
         )}
 
         {/* Layout Split-Screen: Formulario a la izquierda, Vista Previa a la derecha */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start print:block print:w-full print:m-0 print:p-0">
           {/* Panel Izquierdo: Formulario de Edición (5 cols) */}
           <div className="xl:col-span-5 bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden no-print">
             {/* Pestañas de Navegación del Formulario */}
@@ -669,7 +669,7 @@ function NewReceiptForm() {
           </div>
 
           {/* Panel Derecho: Vista Previa en Vivo de Alta Fidelidad (7 cols) */}
-          <div className="xl:col-span-7 space-y-3">
+          <div className="xl:col-span-7 space-y-3 print:w-full print:max-w-none print:m-0 print:p-0 print:block print:space-y-0">
             <div className="flex items-center justify-between no-print">
               <div className="flex items-center space-x-2 text-xs font-bold text-slate-700">
                 <Eye className="w-4 h-4 text-cyan-600" />
@@ -679,7 +679,7 @@ function NewReceiptForm() {
             </div>
 
             {/* Contenedor del Recibo para PDF e Impresión */}
-            <div id="live-receipt-container" className="overflow-x-auto p-1 bg-slate-200/50 rounded-2xl border border-slate-300">
+            <div id="live-receipt-container" className="overflow-x-auto p-1 bg-slate-200/50 rounded-2xl border border-slate-300 print:p-0 print:bg-transparent print:border-none print:rounded-none print:shadow-none print:overflow-visible">
               <ReceiptTemplate receipt={liveReceipt} />
             </div>
           </div>

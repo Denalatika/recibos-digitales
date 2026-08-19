@@ -179,7 +179,7 @@ export function ReceiptDetailClient({ id }: { id: string }) {
         </div>
 
         {/* Hoja de Recibo */}
-        <div id="receipt-detail-container" className="p-2 bg-slate-100/60 rounded-2xl border border-slate-200/80 overflow-x-auto">
+        <div id="receipt-detail-container" className="p-2 bg-slate-100/60 rounded-2xl border border-slate-200/80 overflow-x-auto print:p-0 print:bg-transparent print:border-none print:rounded-none print:shadow-none print:overflow-visible">
           <ReceiptTemplate receipt={receipt} />
         </div>
 
