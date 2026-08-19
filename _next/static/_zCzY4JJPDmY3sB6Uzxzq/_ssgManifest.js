@@ -1,0 +1,1 @@
+self.__SSG_MANIFEST=new Set(["\u002Freceipts\u002F[id]","\u002Freceipts\u002F[id]\u002Fedit","\u002Fshare\u002F[token]","\u002Fvalidate\u002F[code]"]);self.__SSG_MANIFEST_CB&&self.__SSG_MANIFEST_CB()
