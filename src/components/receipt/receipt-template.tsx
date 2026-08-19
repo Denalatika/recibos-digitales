@@ -93,19 +93,20 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
 
   return (
     <div 
-      className={`receipt-sheet bg-white text-slate-800 shadow-sm print:shadow-none border border-slate-300 print:border-slate-400 rounded-lg overflow-hidden mx-auto font-sans w-full ${className}`}
+      className={`receipt-sheet bg-white text-slate-800 shadow-sm print:shadow-none border border-slate-300 print:border-slate-400 rounded-lg overflow-visible mx-auto font-sans w-full ${className}`}
       style={{
         width: '100%',
         maxWidth: isPrintMode ? '100%' : '980px',
         transform: scale !== 1 ? `scale(${scale})` : undefined,
         transformOrigin: 'top center',
+        fontFamily: 'Arial, Helvetica, sans-serif',
       }}
     >
       {/* 1. ENCABEZADO SUPERIOR */}
-      <div className="receipt-header relative flex flex-row items-stretch justify-between bg-white border-b border-slate-300 min-h-[72px]">
+      <div className="receipt-header relative flex flex-row items-stretch justify-between bg-white border-b border-slate-300 min-h-[76px]">
         {/* Bloque Izquierdo con Corte Diagonal */}
         <div 
-          className="receipt-header-polygon flex-1 flex items-center px-4 py-2 pr-10"
+          className="receipt-header-polygon flex-1 flex items-center px-4 py-2.5 pr-12"
           style={{ backgroundColor: primaryColor }}
         >
           <div className="flex items-center space-x-3">
@@ -113,7 +114,7 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
               <img 
                 src={company.logo_url} 
                 alt={company.name} 
-                className="h-10 max-h-10 max-w-[65px] w-auto object-contain drop-shadow-sm shrink-0"
+                className="h-11 max-h-11 max-w-[70px] w-auto object-contain drop-shadow-sm shrink-0"
               />
             ) : (
               <div className="w-9 h-9 rounded-md bg-white/15 flex items-center justify-center border border-white/20 text-white shrink-0">
@@ -121,12 +122,12 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="text-white font-black text-sm md:text-base tracking-wider uppercase leading-tight">
+              <h1 className="text-white font-black text-sm md:text-base tracking-wider uppercase leading-snug">
                 {company.business_name || company.name || 'EMPRESA DEMO'}
               </h1>
               {company.slogan && (
                 <p 
-                  className="font-bold text-[9px] tracking-widest uppercase mt-0.5"
+                  className="font-bold text-[10px] tracking-widest uppercase mt-0.5"
                   style={{ color: accentColor }}
                 >
                   {company.slogan}
@@ -137,7 +138,7 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
         </div>
 
         {/* Bloque Derecho: Título y Metadatos */}
-        <div className="px-4 py-2 w-[310px] shrink-0 bg-white flex flex-col justify-center text-right">
+        <div className="px-4 py-2 w-[320px] shrink-0 bg-white flex flex-col justify-center text-right">
           <div className="flex items-center justify-end space-x-2 mb-1">
             {copyBadge && (
               <span className="font-black uppercase text-[9px] px-2 py-0.5 rounded bg-slate-900 text-white tracking-wider shrink-0">
@@ -149,7 +150,7 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
             </h2>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-left text-[10px] leading-snug">
+          <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-left text-[10.5px] leading-normal">
             <span className="font-extrabold text-slate-900 uppercase">FOLIO:</span>
             <span className="font-bold text-slate-900 text-right font-mono">{receipt.folio}</span>
 
@@ -170,53 +171,53 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
       </div>
 
       {/* CUERPO DEL RECIBO */}
-      <div className="p-3 space-y-2.5">
+      <div className="p-3.5 space-y-3">
         {/* 2. SECCIÓN DE LA PERSONA / COLABORADOR */}
-        <div className="border-b border-slate-200 pb-2">
-          <div className="flex items-center justify-between mb-1">
+        <div className="border-b border-slate-200 pb-2.5">
+          <div className="flex items-center justify-between mb-1.5">
             <h3 
-              className="font-black text-[11px] uppercase tracking-wider"
+              className="font-black text-xs uppercase tracking-wider"
               style={{ color: accentColor }}
             >
               {personTypeHeaders[person.person_type] || 'COLABORADOR'}
             </h3>
             {person.status === 'archived' && (
-              <span className="text-[8px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">
+              <span className="text-[9px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-medium">
                 Archivado
               </span>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-[10px] leading-normal">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 text-[11px] leading-normal">
             {/* Columna Izquierda */}
-            <div className="space-y-0.5">
-              <div className="flex items-baseline">
-                <span className="w-24 font-extrabold text-slate-900 uppercase shrink-0">NOMBRE:</span>
-                <span className="font-bold text-slate-900 flex-1 truncate">{person.full_name || '-'}</span>
+            <div className="space-y-1">
+              <div className="flex items-center">
+                <span className="w-24 font-bold text-slate-900 uppercase shrink-0">NOMBRE:</span>
+                <span className="font-bold text-slate-900 flex-1">{person.full_name || '-'}</span>
               </div>
-              <div className="flex items-baseline">
-                <span className="w-24 font-extrabold text-slate-900 uppercase shrink-0">NÚMERO INT:</span>
+              <div className="flex items-center">
+                <span className="w-24 font-bold text-slate-900 uppercase shrink-0">NÚMERO INT:</span>
                 <span className="font-semibold text-slate-700 flex-1">{person.internal_id || '-'}</span>
               </div>
-              <div className="flex items-baseline">
-                <span className="w-24 font-extrabold text-slate-900 uppercase shrink-0">PUESTO:</span>
-                <span className="font-semibold text-slate-700 flex-1 truncate">{person.position || '-'}</span>
+              <div className="flex items-center">
+                <span className="w-24 font-bold text-slate-900 uppercase shrink-0">PUESTO:</span>
+                <span className="font-semibold text-slate-700 flex-1">{person.position || '-'}</span>
               </div>
             </div>
 
             {/* Columna Derecha */}
-            <div className="space-y-0.5">
-              <div className="flex items-baseline">
-                <span className="w-24 font-extrabold text-slate-900 uppercase shrink-0">DEPTO:</span>
-                <span className="font-semibold text-slate-700 flex-1 truncate">{person.department || '-'}</span>
+            <div className="space-y-1">
+              <div className="flex items-center">
+                <span className="w-24 font-bold text-slate-900 uppercase shrink-0">DEPTO:</span>
+                <span className="font-semibold text-slate-700 flex-1">{person.department || '-'}</span>
               </div>
-              <div className="flex items-baseline">
-                <span className="w-24 font-extrabold text-slate-900 uppercase shrink-0">R.F.C.:</span>
+              <div className="flex items-center">
+                <span className="w-24 font-bold text-slate-900 uppercase shrink-0">R.F.C.:</span>
                 <span className="font-semibold text-slate-700 flex-1">{person.rfc || '-'}</span>
               </div>
-              <div className="flex items-baseline">
-                <span className="w-24 font-extrabold text-slate-900 uppercase shrink-0">RÉGIMEN:</span>
-                <span className="font-semibold text-slate-700 flex-1 truncate">
+              <div className="flex items-center">
+                <span className="w-24 font-bold text-slate-900 uppercase shrink-0">RÉGIMEN:</span>
+                <span className="font-semibold text-slate-700 flex-1">
                   {person.contract_type || 'Sueldos y Asimilados'}
                 </span>
               </div>
@@ -224,45 +225,45 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
           </div>
         </div>
 
-        {/* 3. TABLAS DE PERCEPCIONES, DEDUCCIONES Y NETO (3 Columnas) */}
-        <div className="grid grid-cols-12 gap-2.5 items-start">
+        {/* 3. TABLAS DE PERCEPCIONES, DEDUCCIONES Y NETO */}
+        <div className="grid grid-cols-12 gap-3 items-start">
           {/* Tabla 1: Percepciones (5 cols) */}
-          <div className="col-span-5 rounded border border-slate-200 overflow-hidden flex flex-col justify-between min-h-[105px]">
+          <div className="col-span-5 rounded border border-slate-200 overflow-hidden flex flex-col justify-between min-h-[120px]">
             <div>
               <div 
-                className="text-white font-black uppercase tracking-wider px-2.5 py-1 text-[10px]"
+                className="text-white font-black uppercase tracking-wider px-3 py-1.5 text-[10.5px]"
                 style={{ backgroundColor: '#0f766e' }}
               >
                 PERCEPCIONES
               </div>
-              <table className="w-full text-[10px]">
+              <table className="w-full text-[10.5px] border-collapse" style={{ tableLayout: 'fixed' }}>
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-600 font-bold bg-slate-50">
-                    <th className="py-1 px-2 text-left">CONCEPTO</th>
-                    <th className="py-1 px-1.5 text-center">REF</th>
-                    <th className="py-1 px-2 text-right">IMPORTE</th>
+                    <th className="py-1 px-2.5 text-left" style={{ width: '48%' }}>CONCEPTO</th>
+                    <th className="py-1 px-1.5 text-center" style={{ width: '24%' }}>REF</th>
+                    <th className="py-1 px-2.5 text-right" style={{ width: '28%' }}>IMPORTE</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {earnings.map((e, idx) => (
                     <tr key={e.id || idx}>
-                      <td className="py-0.5 px-2 font-medium text-slate-800 truncate max-w-[130px]">{e.concept}</td>
-                      <td className="py-0.5 px-1.5 text-[9px] text-center text-slate-500">{e.reference || '-'}</td>
-                      <td className="py-0.5 px-2 text-right font-semibold text-slate-800 whitespace-nowrap">
+                      <td className="py-1 px-2.5 font-medium text-slate-800">{e.concept}</td>
+                      <td className="py-1 px-1.5 text-[9.5px] text-center text-slate-500">{e.reference || '-'}</td>
+                      <td className="py-1 px-2.5 text-right font-semibold text-slate-900 whitespace-nowrap">
                         {formatCurrency(e.amount)}
                       </td>
                     </tr>
                   ))}
                   {earnings.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="py-2 text-center text-slate-400 italic text-[9px]">Sin percepciones</td>
+                      <td colSpan={3} className="py-3 text-center text-slate-400 italic text-[10px]">Sin percepciones</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
 
-            <div className="bg-slate-50 border-t border-slate-200 flex items-center justify-between font-black px-2.5 py-1 text-[10px]">
+            <div className="bg-slate-50 border-t border-slate-200 flex items-center justify-between font-black px-3 py-1.5 text-[10.5px]">
               <span className="text-slate-800 uppercase">TOTAL PERCEPCIONES</span>
               <span className="font-extrabold" style={{ color: '#0f766e' }}>
                 {formatCurrency(receipt.total_earnings)}
@@ -271,42 +272,42 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
           </div>
 
           {/* Tabla 2: Deducciones (4 cols) */}
-          <div className="col-span-4 rounded border border-slate-200 overflow-hidden flex flex-col justify-between min-h-[105px]">
+          <div className="col-span-4 rounded border border-slate-200 overflow-hidden flex flex-col justify-between min-h-[120px]">
             <div>
               <div 
-                className="text-white font-black uppercase tracking-wider px-2.5 py-1 text-[10px]"
+                className="text-white font-black uppercase tracking-wider px-3 py-1.5 text-[10.5px]"
                 style={{ backgroundColor: secondaryColor }}
               >
                 DEDUCCIONES
               </div>
-              <table className="w-full text-[10px]">
+              <table className="w-full text-[10.5px] border-collapse" style={{ tableLayout: 'fixed' }}>
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-600 font-bold bg-slate-50">
-                    <th className="py-1 px-2 text-left">CONCEPTO</th>
-                    <th className="py-1 px-1.5 text-center">REF</th>
-                    <th className="py-1 px-2 text-right">IMPORTE</th>
+                    <th className="py-1 px-2 text-left" style={{ width: '44%' }}>CONCEPTO</th>
+                    <th className="py-1 px-1 text-center" style={{ width: '26%' }}>REF</th>
+                    <th className="py-1 px-2 text-right" style={{ width: '30%' }}>IMPORTE</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {deductions.map((d, idx) => (
                     <tr key={d.id || idx}>
-                      <td className="py-0.5 px-2 font-medium text-slate-800 truncate max-w-[110px]">{d.concept}</td>
-                      <td className="py-0.5 px-1.5 text-[9px] text-center text-slate-500">{d.reference || '-'}</td>
-                      <td className="py-0.5 px-2 text-right font-semibold text-slate-800 whitespace-nowrap">
+                      <td className="py-1 px-2 font-medium text-slate-800">{d.concept}</td>
+                      <td className="py-1 px-1 text-[9.5px] text-center text-slate-500 whitespace-nowrap">{d.reference || '-'}</td>
+                      <td className="py-1 px-2 text-right font-semibold text-slate-900 whitespace-nowrap">
                         {formatCurrency(d.amount)}
                       </td>
                     </tr>
                   ))}
                   {deductions.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="py-2 text-center text-slate-400 italic text-[9px]">Sin deducciones</td>
+                      <td colSpan={3} className="py-3 text-center text-slate-400 italic text-[10px]">Sin deducciones</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
 
-            <div className="bg-slate-50 border-t border-slate-200 flex items-center justify-between font-black px-2.5 py-1 text-[10px]">
+            <div className="bg-slate-50 border-t border-slate-200 flex items-center justify-between font-black px-3 py-1.5 text-[10.5px]">
               <span className="text-slate-800 uppercase">TOTAL DEDUCCIONES</span>
               <span className="font-extrabold" style={{ color: '#0f766e' }}>
                 {formatCurrency(receipt.total_deductions)}
@@ -315,26 +316,26 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
           </div>
 
           {/* Tarjeta 3: Neto a Pagar & Resumen (3 cols) */}
-          <div className="col-span-3 rounded border-2 border-slate-300 flex flex-col justify-between bg-slate-50/70 p-2.5 min-h-[105px]">
+          <div className="col-span-3 rounded border-2 border-slate-300 flex flex-col justify-between bg-slate-50/70 p-3 min-h-[120px]">
             <div className="text-center">
-              <span className="text-[9px] font-black text-slate-700 tracking-wider uppercase">
+              <span className="text-[10px] font-black text-slate-700 tracking-wider uppercase">
                 NETO A PAGAR
               </span>
               <div 
-                className="font-black tracking-tight text-lg md:text-xl mt-0.5"
+                className="font-black tracking-tight text-xl mt-1"
                 style={{ color: '#0f766e' }}
               >
                 {formatCurrency(receipt.net_total)}
               </div>
             </div>
 
-            <div className="border-t border-slate-200 pt-1.5 mt-1 space-y-0.5 text-[9px] leading-snug">
+            <div className="border-t border-slate-200 pt-2 mt-1 space-y-1 text-[10px] leading-normal">
               <div className="flex justify-between text-slate-600 font-semibold">
-                <span>PERC:</span>
+                <span>PERCEPCIONES:</span>
                 <span className="text-slate-900 font-bold">{formatCurrency(receipt.total_earnings)}</span>
               </div>
               <div className="flex justify-between text-slate-600 font-semibold">
-                <span>DED:</span>
+                <span>DEDUCCIONES:</span>
                 <span className="text-slate-900 font-bold">{formatCurrency(receipt.total_deductions)}</span>
               </div>
             </div>
@@ -342,33 +343,33 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
         </div>
 
         {/* 4. SECCIÓN INFERIOR: INFORMACIÓN DE PAGO, VALIDACIÓN Y FIRMA */}
-        <div className="border-t border-slate-200 pt-2 grid grid-cols-12 gap-3 items-center">
+        <div className="border-t border-slate-200 pt-2.5 grid grid-cols-12 gap-3 items-center">
           {/* Información de Pago (5 cols) */}
-          <div className="col-span-5 space-y-1 text-[9px]">
-            <h4 className="font-extrabold text-slate-900 uppercase text-[9px] tracking-wide">
+          <div className="col-span-5 space-y-1 text-[9.5px]">
+            <h4 className="font-extrabold text-slate-900 uppercase text-[9.5px] tracking-wide">
               INFORMACIÓN DE PAGO
             </h4>
-            <div className="grid grid-cols-2 bg-slate-50 rounded border border-slate-200 p-1.5 gap-1 text-[9px] leading-snug">
+            <div className="grid grid-cols-2 bg-slate-50 rounded border border-slate-200 p-2 gap-1.5 text-[9.5px] leading-normal">
               <div>
-                <span className="text-slate-500 font-bold uppercase block text-[8px]">MÉTODO</span>
-                <p className="font-bold text-slate-800 truncate">Depósito Bancario</p>
+                <span className="text-slate-500 font-bold uppercase block text-[8.5px]">MÉTODO</span>
+                <p className="font-bold text-slate-800">Depósito Bancario</p>
               </div>
 
               <div>
-                <span className="text-slate-500 font-bold uppercase block text-[8px]">BANCO</span>
-                <p className="font-bold text-slate-800 truncate">{receipt.bank_name || person.bank_name || 'Santander'}</p>
+                <span className="text-slate-500 font-bold uppercase block text-[8.5px]">BANCO</span>
+                <p className="font-bold text-slate-800">{receipt.bank_name || person.bank_name || 'Santander'}</p>
               </div>
 
               <div>
-                <span className="text-slate-500 font-bold uppercase block text-[8px]">CUENTA</span>
-                <p className="font-bold text-slate-800 truncate">
+                <span className="text-slate-500 font-bold uppercase block text-[8.5px]">CUENTA</span>
+                <p className="font-bold text-slate-800">
                   {receipt.bank_account_masked || maskBankAccount(person.bank_account_masked)}
                 </p>
               </div>
 
               <div>
-                <span className="text-slate-500 font-bold uppercase block text-[8px]">FECHA DEPÓSITO</span>
-                <p className="font-bold text-slate-800 truncate">
+                <span className="text-slate-500 font-bold uppercase block text-[8.5px]">FECHA DEPÓSITO</span>
+                <p className="font-bold text-slate-800">
                   {formatDate(receipt.deposit_date || receipt.payment_date, 'with_slashes')}
                 </p>
               </div>
@@ -376,25 +377,25 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
           </div>
 
           {/* Validación y QR (4 cols) */}
-          <div className="col-span-4 flex items-center bg-slate-50 rounded border border-slate-200 p-1.5 space-x-2">
+          <div className="col-span-4 flex items-center bg-slate-50 rounded border border-slate-200 p-2 space-x-2.5">
             <div className="bg-white p-1 rounded border border-slate-200 shrink-0">
               <QRCodeSVG 
                 value={qrValidationUrl} 
-                size={46} 
+                size={50} 
                 level="M" 
                 fgColor="#0f172a" 
               />
             </div>
-            <div className="text-[9px] leading-snug space-y-0.5 flex-1 min-w-0">
-              <span className="font-black text-slate-900 uppercase block text-[9px]">VALIDACIÓN</span>
-              <p className="text-slate-500 truncate text-[8px]">
-                FOLIO: <span className="text-slate-800 font-bold">{receipt.internal_folio || 'SYSS-015'}</span>
+            <div className="text-[10px] leading-normal space-y-0.5 flex-1 min-w-0">
+              <span className="font-black text-slate-900 uppercase block text-[9.5px]">VALIDACIÓN</span>
+              <p className="text-slate-600 text-[9px]">
+                FOLIO: <span className="text-slate-900 font-bold font-mono">{receipt.internal_folio || 'SYSSINT-015'}</span>
               </p>
-              <p className="text-slate-500 truncate text-[8px]">
-                CÓD: <span className="text-slate-800 font-bold font-mono">{receipt.verification_code}</span>
+              <p className="text-slate-600 text-[9px]">
+                CÓD: <span className="text-slate-900 font-bold font-mono">{receipt.verification_code}</span>
               </p>
               <div className="pt-0.5">
-                <span className={`inline-flex items-center space-x-1 px-1.5 py-0.5 rounded font-extrabold text-[8px] border ${currentStatus.color}`}>
+                <span className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded font-extrabold text-[8.5px] border ${currentStatus.color}`}>
                   {currentStatus.icon}
                   <span>{currentStatus.label}</span>
                 </span>
@@ -408,18 +409,18 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
               <img 
                 src={company.signer_signature_url} 
                 alt="Firma" 
-                className="h-6 object-contain mb-0.5" 
+                className="h-7 object-contain mb-0.5" 
               />
             ) : (
-              <div className="h-5 text-sm flex items-center justify-center text-slate-700 italic font-serif">
+              <div className="h-6 text-sm flex items-center justify-center text-slate-700 italic font-serif">
                 {company.signer_name ? company.signer_name.split(' ')[1] || 'Firma' : 'Lic. Karla Hdez'}
               </div>
             )}
-            <div className="w-full border-t border-slate-400 pt-0.5">
-              <p className="text-[9px] font-bold text-slate-900 leading-tight truncate">
+            <div className="w-full border-t border-slate-400 pt-1">
+              <p className="text-[10px] font-bold text-slate-900 leading-normal">
                 {receipt.signer_name || company.signer_name || 'Lic. Karla Hernández López'}
               </p>
-              <p className="text-[8px] text-slate-600 font-medium leading-tight truncate">
+              <p className="text-[8.5px] text-slate-600 font-medium leading-normal">
                 {receipt.signer_role || company.signer_role || 'Gerente de Administración'}
               </p>
             </div>
@@ -429,34 +430,34 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
 
       {/* 5. PIE DE PÁGINA (Footer) */}
       <div 
-        className="px-4 py-1.5 text-[9px] text-white font-medium"
+        className="px-4 py-2 text-[9.5px] text-white font-medium"
         style={{ backgroundColor: primaryColor }}
       >
         <div className="grid grid-cols-4 gap-2 text-left items-center leading-normal">
           {company.address && (
             <div className="flex items-center space-x-1.5 truncate">
-              <MapPin className="w-3 h-3 shrink-0" style={{ color: accentColor }} />
+              <MapPin className="w-3.5 h-3.5 shrink-0" style={{ color: accentColor }} />
               <span className="truncate">{company.address}</span>
             </div>
           )}
 
           {company.phone && (
             <div className="flex items-center space-x-1.5 truncate">
-              <Phone className="w-3 h-3 shrink-0" style={{ color: accentColor }} />
+              <Phone className="w-3.5 h-3.5 shrink-0" style={{ color: accentColor }} />
               <span className="truncate">{company.phone}</span>
             </div>
           )}
 
           {company.email && (
             <div className="flex items-center space-x-1.5 truncate">
-              <Mail className="w-3 h-3 shrink-0" style={{ color: accentColor }} />
+              <Mail className="w-3.5 h-3.5 shrink-0" style={{ color: accentColor }} />
               <span className="truncate">{company.email}</span>
             </div>
           )}
 
           {company.website && (
             <div className="flex items-center space-x-1.5 truncate">
-              <Globe className="w-3 h-3 shrink-0" style={{ color: accentColor }} />
+              <Globe className="w-3.5 h-3.5 shrink-0" style={{ color: accentColor }} />
               <span className="truncate">{company.website}</span>
             </div>
           )}
