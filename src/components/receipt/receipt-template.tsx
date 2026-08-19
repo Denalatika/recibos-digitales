@@ -469,11 +469,6 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Aviso Legal de Comprobante Administrativo */}
-        <p className="text-[7px] text-slate-400 italic text-center pt-0.2 border-t border-slate-100 leading-none">
-          {company.legal_disclaimer || 'Comprobante administrativo interno sin valor fiscal CFDI.'}
-        </p>
       </div>
 
       {/* 5. PIE DE PÁGINA (Footer) */}
