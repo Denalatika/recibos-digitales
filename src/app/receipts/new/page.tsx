@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -34,7 +34,7 @@ import {
   ReceiptDeduction
 } from '@/types/database';
 
-export default function NewReceiptPage() {
+function NewReceiptForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { activeCompany, activeCompanyPeople, addReceipt } = useApp();
@@ -693,5 +693,13 @@ export default function NewReceiptPage() {
         />
       </div>
     </AppLayout>
+  );
+}
+
+export default function NewReceiptPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-slate-500 font-bold">Cargando creador de recibos...</div>}>
+      <NewReceiptForm />
+    </Suspense>
   );
 }
