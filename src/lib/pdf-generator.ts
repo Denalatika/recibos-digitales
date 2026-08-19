@@ -19,18 +19,17 @@ export async function downloadReceiptAsPdf({
     throw new Error(`Elemento con ID "${elementId}" no encontrado.`);
   }
 
-  // Opciones de captura en alta resolución (2x scale)
+  // Opciones de captura en alta resolución (2.5x scale) con fondo blanco limpio
   const canvas = await html2canvas(element, {
-    scale: 2,
+    scale: 2.5,
     useCORS: true,
     logging: false,
     backgroundColor: '#ffffff',
-    windowWidth: 1200,
   });
 
   const imgData = canvas.toDataURL('image/png');
   
-  // Crear documento PDF en orientación seleccionada (Letter)
+  // Crear documento PDF en formato Carta (Letter Portrait: 215.9 x 279.4 mm)
   const pdf = new jsPDF({
     orientation: orientation,
     unit: 'mm',
@@ -40,18 +39,16 @@ export async function downloadReceiptAsPdf({
   const pdfWidth = pdf.internal.pageSize.getWidth();
   const pdfHeight = pdf.internal.pageSize.getHeight();
 
-  const margin = 6;
-  const printableWidth = pdfWidth - margin * 2;
-  const printableHeight = pdfHeight - margin * 2;
-
+  const marginX = 8;
+  const printableWidth = pdfWidth - marginX * 2;
   const imgWidth = printableWidth;
   const imgHeight = (canvas.height * printableWidth) / canvas.width;
 
-  // Si la altura calculada cabe en una página, centrarla verticalmente
-  const yPos = imgHeight <= printableHeight 
-    ? margin + (printableHeight - imgHeight) / 2 
-    : margin;
+  // Centrar en la hoja tanto horizontal como verticalmente
+  const yPos = imgHeight < pdfHeight - 16
+    ? (pdfHeight - imgHeight) / 2
+    : 8;
 
-  pdf.addImage(imgData, 'PNG', margin, yPos, imgWidth, Math.min(imgHeight, printableHeight));
+  pdf.addImage(imgData, 'PNG', marginX, Math.max(8, yPos), imgWidth, Math.min(imgHeight, pdfHeight - 16));
   pdf.save(filename);
 }

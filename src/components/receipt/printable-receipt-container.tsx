@@ -184,13 +184,12 @@ export function PrintableReceiptContainer({
         className="p-3 bg-slate-100/60 rounded-2xl border border-slate-200/80 overflow-x-auto print:p-0 print:bg-transparent print:border-none print:shadow-none print:m-0"
       >
         <div className="print-dual-container space-y-3 print:space-y-0 w-full max-w-[1000px] mx-auto">
-          {/* 1er Tanto: Original (Mantiene siempre el tamaño compacto exacto de media carta) */}
+          {/* 1er Tanto: Original */}
           <div className="print-dual-item">
             <ReceiptTemplate 
               receipt={receipt} 
               companyOverride={companyOverride}
               personOverride={personOverride}
-              isCompact={true} 
               copyBadge={printLayout === 'dual' ? 'ORIGINAL' : undefined} 
             />
           </div>
@@ -213,7 +212,6 @@ export function PrintableReceiptContainer({
                   receipt={receipt} 
                   companyOverride={companyOverride}
                   personOverride={personOverride}
-                  isCompact={true} 
                   copyBadge="COPIA" 
                 />
               </div>
