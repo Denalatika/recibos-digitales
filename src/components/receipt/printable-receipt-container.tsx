@@ -41,20 +41,20 @@ export function PrintableReceiptContainer({
 
   return (
     <div className="space-y-4">
-      {/* Inyección de regla @page y estilos de impresión estrictamente en Carta Vertical */}
+      {/* Inyección de regla @page y estilos de impresión centrados en Carta Vertical */}
       <style jsx global>{`
         @page {
           size: letter portrait !important;
-          margin: 4mm 5mm !important;
+          margin: 10mm 8mm !important;
         }
         @media print {
           html, body {
             width: 100% !important;
-            height: auto !important;
+            height: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
-            overflow: visible !important;
+            overflow: hidden !important;
           }
 
           /* Ocultar elementos de interfaz ajenos */
@@ -86,10 +86,10 @@ export function PrintableReceiptContainer({
             display: flex !important;
             flex-direction: column !important;
             justify-content: flex-start !important;
-            gap: 2mm !important;
+            gap: 3mm !important;
             width: 100% !important;
             max-width: 100% !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
             padding: 0 !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
@@ -104,7 +104,7 @@ export function PrintableReceiptContainer({
           }
 
           .print-cut-line {
-            margin: 1.5mm 0 !important;
+            margin: 2mm 0 !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
           }
@@ -198,9 +198,9 @@ export function PrintableReceiptContainer({
           {printLayout === 'dual' && (
             <>
               {/* Línea de corte / talón */}
-              <div className="print-cut-line relative py-1.5 print:py-1 flex items-center justify-center select-none">
+              <div className="print-cut-line relative py-2 print:py-1.5 flex items-center justify-center select-none">
                 <div className="border-t-2 border-dashed border-slate-300 print:border-slate-400 w-full"></div>
-                <span className="absolute bg-white px-3 text-[9px] font-mono text-slate-500 flex items-center space-x-1 border border-slate-200 print:border-slate-300 rounded-full shadow-xs">
+                <span className="absolute bg-white px-3 text-[9.5px] font-mono text-slate-500 flex items-center space-x-1.5 border border-slate-200 print:border-slate-300 rounded-full shadow-xs">
                   <Scissors className="w-3 h-3 text-slate-400" />
                   <span>LÍNEA DE CORTE • COPIA COLABORADOR</span>
                 </span>
