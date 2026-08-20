@@ -44,12 +44,32 @@ export function formatDate(dateString?: string | null, format: 'with_slashes' | 
   }
 }
 
+const MONTHS_SHORT = [
+  "ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
+  "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"
+];
+
 /**
- * Formatea un rango de periodo: "01 MAYO 2024 – 15 MAYO 2024"
+ * Formatea un rango de periodo: "01 AGO 2026 – 15 AGO 2026"
  */
 export function formatPeriod(startStr?: string | null, endStr?: string | null): string {
   if (!startStr || !endStr) return "-";
-  return `${formatDate(startStr, 'clean')} – ${formatDate(endStr, 'clean')}`;
+  try {
+    const formatShortDate = (str: string) => {
+      const parts = str.split('-');
+      if (parts.length === 3) {
+        const year = parts[0];
+        const monthIdx = parseInt(parts[1], 10) - 1;
+        const day = parts[2].padStart(2, '0');
+        const month = MONTHS_SHORT[monthIdx] || parts[1];
+        return `${day} ${month} ${year}`;
+      }
+      return str;
+    };
+    return `${formatShortDate(startStr)} – ${formatShortDate(endStr)}`;
+  } catch {
+    return `${startStr} – ${endStr}`;
+  }
 }
 
 /**

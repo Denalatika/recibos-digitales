@@ -104,10 +104,10 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
       <div className="receipt-header relative flex flex-row items-stretch justify-between bg-white border-b border-slate-300 min-h-[70px]">
         {/* Bloque Izquierdo con Corte Diagonal */}
         <div 
-          className="receipt-header-polygon flex-1 flex items-center px-4 py-2 pr-8 min-w-0"
+          className="receipt-header-polygon flex-1 flex items-center px-4 py-2 pr-14 min-w-0"
           style={{ backgroundColor: primaryColor }}
         >
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 w-full pr-2">
             {company.logo_url ? (
               <img 
                 src={company.logo_url} 
@@ -119,13 +119,13 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
                 <Building2 className="w-5 h-5 text-white/90" />
               </div>
             )}
-            <div className="min-w-0">
-              <h1 className="text-white font-bold text-sm md:text-[15px] uppercase leading-snug truncate">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-white font-bold text-xs md:text-sm uppercase leading-tight">
                 {company.business_name || company.name || 'EMPRESA DEMO'}
               </h1>
               {company.slogan && (
                 <p 
-                  className="font-medium text-[9px] uppercase mt-0.5 truncate"
+                  className="font-medium text-[9px] uppercase mt-0.5 leading-tight"
                   style={{ color: accentColor }}
                 >
                   {company.slogan}
@@ -135,15 +135,15 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
           </div>
         </div>
 
-        {/* Bloque Derecho: Título, Badge y Metadatos con ancho suficiente para periodos largos */}
-        <div className="px-3.5 py-1.5 w-[335px] shrink-0 bg-white flex flex-col justify-center text-right">
+        {/* Bloque Derecho: Título, Badge y Metadatos */}
+        <div className="px-3.5 py-1.5 w-[290px] shrink-0 bg-white flex flex-col justify-center text-right">
           <div className="flex flex-col items-end mb-1">
             {copyBadge && (
               <span className="inline-block mb-0.5 text-[8.5px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-slate-800 text-white shadow-xs">
                 {copyBadge}
               </span>
             )}
-            <h2 className="font-bold text-slate-900 text-sm md:text-[15px] uppercase leading-tight">
+            <h2 className="font-bold text-slate-900 text-xs md:text-sm uppercase leading-tight">
               {receiptTypeTitles[receipt.receipt_type] || 'RECIBO DE NÓMINA'}
             </h2>
           </div>
