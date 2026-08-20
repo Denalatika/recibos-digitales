@@ -198,10 +198,10 @@ export function PrintableReceiptContainer({
           {printLayout === 'dual' && (
             <>
               {/* Línea de corte / talón */}
-              <div className="print-cut-line relative py-2 print:py-1.5 flex items-center justify-center select-none">
-                <div className="border-t-2 border-dashed border-slate-300 print:border-slate-400 w-full"></div>
-                <span className="absolute bg-white px-3 text-[9.5px] font-mono text-slate-500 flex items-center space-x-1.5 border border-slate-200 print:border-slate-300 rounded-full shadow-xs">
-                  <Scissors className="w-3 h-3 text-slate-400" />
+              <div className="print-cut-line relative py-2.5 print:py-2 flex items-center justify-center select-none w-full">
+                <div className="border-t-2 border-dashed border-slate-300 print:border-slate-400 w-full absolute inset-x-0"></div>
+                <span className="relative z-10 bg-white px-4 py-0.5 text-[9px] font-bold text-slate-500 uppercase flex items-center space-x-2 border border-slate-300 print:border-slate-400 rounded-full shadow-xs">
+                  <Scissors className="w-3.5 h-3.5 text-slate-400" />
                   <span>LÍNEA DE CORTE • COPIA COLABORADOR</span>
                 </span>
               </div>
