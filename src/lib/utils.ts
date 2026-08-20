@@ -10,6 +10,46 @@ const MONTHS_ES = [
   "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
 ];
 
+const MONTHS_SHORT = [
+  "ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
+  "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"
+];
+
+/**
+ * Obtiene la URL base de la aplicación con la siguiente jerarquía estricta:
+ * 1. NEXT_PUBLIC_APP_URL (si está configurada)
+ * 2. VERCEL_PROJECT_PRODUCTION_URL o VERCEL_URL (en servidor)
+ * 3. window.location.origin (únicamente en el navegador)
+ * 4. http://localhost:3000 (solamente durante desarrollo local)
+ */
+export function getAppBaseUrl(): string {
+  // 1. Variable explícita de entorno
+  if (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.trim() !== '') {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+  }
+
+  // 2. Variables del entorno Vercel (servidor o build)
+  if (typeof process !== 'undefined') {
+    const vercelProdUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL;
+    if (vercelProdUrl && vercelProdUrl.trim() !== '') {
+      return `https://${vercelProdUrl.replace(/\/$/, '')}`;
+    }
+
+    const vercelUrl = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_VERCEL_URL;
+    if (vercelUrl && vercelUrl.trim() !== '') {
+      return `https://${vercelUrl.replace(/\/$/, '')}`;
+    }
+  }
+
+  // 3. Origen del navegador
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+
+  // 4. Solo en desarrollo local
+  return 'http://localhost:3000';
+}
+
 /**
  * Formatea una fecha en formato "15 / MAYO / 2024" o "15 MAYO 2024"
  */
@@ -43,11 +83,6 @@ export function formatDate(dateString?: string | null, format: 'with_slashes' | 
     return dateString;
   }
 }
-
-const MONTHS_SHORT = [
-  "ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
-  "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"
-];
 
 /**
  * Formatea un rango de periodo: "01 AGO 2026 – 15 AGO 2026"
@@ -99,18 +134,38 @@ export function maskBankAccount(account?: string | null): string {
 }
 
 /**
- * Genera un código de verificación seguro alfanumérico en grupos de 4 (ej. K3JL-9Q7R-D6EK)
+ * Genera un código de verificación criptográficamente seguro (ej. K3JL-9Q7R-D6EK)
  */
 export function generateVerificationCode(): string {
   const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
-  const segment = () => {
+  const array = new Uint8Array(12);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(array);
+  } else {
+    for (let i = 0; i < 12; i++) array[i] = Math.floor(Math.random() * 256);
+  }
+  const segment = (offset: number) => {
     let str = '';
     for (let i = 0; i < 4; i++) {
-      str += chars.charAt(Math.floor(Math.random() * chars.length));
+      str += chars[array[offset + i] % chars.length];
     }
     return str;
   };
-  return `${segment()}-${segment()}-${segment()}`;
+  return `${segment(0)}-${segment(4)}-${segment(8)}`;
+}
+
+/**
+ * Genera un token aleatorio seguro para compartir enlaces (alta entropía de 32+ caracteres)
+ */
+export function generateSecureToken(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID().replace(/-/g, '') + Date.now().toString(36);
+  }
+  const array = new Uint8Array(16);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(array);
+  }
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('') + Date.now().toString(36);
 }
 
 /**
@@ -132,7 +187,6 @@ export function calculateTotals(
 
   const netTotal = Math.max(0, totalEarnings - totalDeductions);
 
-  // Redondear a 2 decimales para evitar problemas de precisión
   return {
     totalEarnings: Math.round(totalEarnings * 100) / 100,
     totalDeductions: Math.round(totalDeductions * 100) / 100,

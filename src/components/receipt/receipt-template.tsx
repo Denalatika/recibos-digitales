@@ -15,7 +15,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { Receipt, Company, Person } from '@/types/database';
-import { formatDate, formatPeriod, formatCurrency, maskBankAccount } from '@/lib/utils';
+import { formatDate, formatPeriod, formatCurrency, maskBankAccount, getAppBaseUrl } from '@/lib/utils';
 
 export interface ReceiptTemplateProps {
   receipt: Receipt;
@@ -48,8 +48,7 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
   const accentColor = company.accent_color || '#00a8cc';
 
   // URL pública para el código QR
-  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-  const qrValidationUrl = `${baseUrl}/validate/${receipt.verification_code}`;
+  const qrValidationUrl = `${getAppBaseUrl()}/validate/${receipt.verification_code}`;
 
   // Título del tipo de documento
   const receiptTypeTitles: Record<string, string> = {

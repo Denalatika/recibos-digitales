@@ -1,38 +1,136 @@
 'use client';
 
 import { supabase, isSupabaseConfigured } from './supabase';
-import { Company, Person, Receipt, ReceiptEarning, ReceiptDeduction } from '@/types/database';
+import { Company, Person, Receipt, ShareLink } from '@/types/database';
 
 /**
- * Servicio de Almacenamiento de Archivos (Logos y Firmas)
+ * Autenticación con Supabase
+ */
+export async function signInWithEmail(email: string, password: string): Promise<{ user: any; error: string | null }> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { user: { id: 'demo-user', email, full_name: 'Administrador Demo' }, error: null };
+  }
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) {
+      return { user: null, error: error.message };
+    }
+    return { user: data.user, error: null };
+  } catch (err: any) {
+    return { user: null, error: err?.message || 'Error al iniciar sesión' };
+  }
+}
+
+export async function signUpWithEmail(email: string, password: string, fullName: string): Promise<{ user: any; error: string | null }> {
+  if (!supabase || !isSupabaseConfigured) {
+    return { user: { id: 'demo-user', email, full_name: fullName }, error: null };
+  }
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName,
+        },
+      },
+    });
+    if (error) {
+      return { user: null, error: error.message };
+    }
+    return { user: data.user, error: null };
+  } catch (err: any) {
+    return { user: null, error: err?.message || 'Error al registrar usuario' };
+  }
+}
+
+export async function signOutUser(): Promise<void> {
+  if (supabase && isSupabaseConfigured) {
+    await supabase.auth.signOut();
+  }
+}
+
+/**
+ * Generación atómica de folios en PostgreSQL (Supabase)
+ */
+export async function fetchNextFolioFromSupabase(companyId: string): Promise<string | null> {
+  if (!supabase || !isSupabaseConfigured) return null;
+  try {
+    const { data, error } = await supabase.rpc('get_next_folio', {
+      p_company_id: companyId,
+    });
+    if (error) {
+      console.warn('Error llamando get_next_folio RPC:', error.message);
+      return null;
+    }
+    return data as string;
+  } catch (err) {
+    console.error('Error fetchNextFolioFromSupabase:', err);
+    return null;
+  }
+}
+
+/**
+ * Servicio de Almacenamiento Multiempresa (Logos en bucket público, Firmas en bucket privado)
  */
 export async function uploadAssetToSupabase(
   file: File,
-  folder: 'logos' | 'signatures' = 'logos'
+  folder: 'logos' | 'letterheads' | 'signatures' = 'logos',
+  companyId?: string,
+  receiptId?: string
 ): Promise<string | null> {
   if (!supabase || !isSupabaseConfigured) return null;
 
   try {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+    const fileExt = file.name.split('.').pop() || 'png';
+    const targetCompanyId = companyId || 'default-company';
 
-    const { error: uploadError } = await supabase.storage
-      .from('receipt-assets')
-      .upload(fileName, file, {
-        cacheControl: '3600',
-        upsert: true,
-      });
+    if (folder === 'signatures') {
+      const targetReceiptId = receiptId || 'general';
+      const filePath = `${targetCompanyId}/${targetReceiptId}/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
 
-    if (uploadError) {
-      console.warn('Error subiendo imagen a Supabase Storage:', uploadError.message);
-      return null;
+      const { error: uploadError } = await supabase.storage
+        .from('receipt-private-assets')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.warn('Error subiendo firma a receipt-private-assets:', uploadError.message);
+        return null;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('receipt-private-assets')
+        .getPublicUrl(filePath);
+
+      return publicUrlData.publicUrl;
+    } else {
+      const subFolder = folder === 'letterheads' ? 'letterheads' : 'logos';
+      const filePath = `${targetCompanyId}/${subFolder}/${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-public-assets')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.warn('Error subiendo logo a company-public-assets:', uploadError.message);
+        return null;
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('company-public-assets')
+        .getPublicUrl(filePath);
+
+      return publicUrlData.publicUrl;
     }
-
-    const { data: publicUrlData } = supabase.storage
-      .from('receipt-assets')
-      .getPublicUrl(fileName);
-
-    return publicUrlData.publicUrl;
   } catch (err) {
     console.error('Excepción al subir imagen:', err);
     return null;
@@ -154,7 +252,6 @@ export async function getReceiptsFromSupabase(): Promise<Receipt[] | null> {
 export async function saveReceiptToSupabase(receipt: Receipt): Promise<boolean> {
   if (!supabase || !isSupabaseConfigured) return false;
   try {
-    // 1. Guardar recibo principal (sin las relaciones anidadas)
     const { company, person, earnings, deductions, ...mainReceipt } = receipt;
 
     const { error: receiptError } = await supabase
@@ -166,7 +263,6 @@ export async function saveReceiptToSupabase(receipt: Receipt): Promise<boolean> 
       return false;
     }
 
-    // 2. Guardar percepciones
     if (earnings && earnings.length > 0) {
       await supabase.from('receipt_earnings').delete().eq('receipt_id', receipt.id);
       const earningsToInsert = earnings.map((e, idx) => ({
@@ -177,7 +273,6 @@ export async function saveReceiptToSupabase(receipt: Receipt): Promise<boolean> 
       await supabase.from('receipt_earnings').insert(earningsToInsert);
     }
 
-    // 3. Guardar deducciones
     if (deductions && deductions.length > 0) {
       await supabase.from('receipt_deductions').delete().eq('receipt_id', receipt.id);
       const deductionsToInsert = deductions.map((d, idx) => ({
@@ -210,6 +305,21 @@ export async function deleteReceiptFromSupabase(id: string): Promise<boolean> {
     return true;
   } catch (err) {
     console.error('Error deleteReceiptFromSupabase:', err);
+    return false;
+  }
+}
+
+export async function saveShareLinkToSupabase(shareLink: ShareLink): Promise<boolean> {
+  if (!supabase || !isSupabaseConfigured) return false;
+  try {
+    const { error } = await supabase.from('share_links').upsert(shareLink);
+    if (error) {
+      console.warn('Error guardando share_link en Supabase:', error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error('Error saveShareLinkToSupabase:', err);
     return false;
   }
 }

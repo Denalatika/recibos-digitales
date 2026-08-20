@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   Company, 
   Person, 
@@ -15,8 +15,13 @@ import {
   DEMO_PEOPLE, 
   DEMO_RECEIPTS 
 } from '@/lib/demo-data';
-import { generateVerificationCode, calculateTotals } from '@/lib/utils';
-import { isSupabaseConfigured } from '@/lib/supabase';
+import { 
+  generateVerificationCode, 
+  generateSecureToken, 
+  calculateTotals, 
+  getAppBaseUrl 
+} from '@/lib/utils';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { 
   getCompaniesFromSupabase, 
   saveCompanyToSupabase,
@@ -24,11 +29,23 @@ import {
   savePersonToSupabase,
   getReceiptsFromSupabase,
   saveReceiptToSupabase,
-  deleteReceiptFromSupabase
+  deleteReceiptFromSupabase,
+  signInWithEmail,
+  signUpWithEmail,
+  signOutUser,
+  saveShareLinkToSupabase
 } from '@/lib/supabase-service';
 
 interface AppContextType {
   profile: Profile;
+  user: any | null;
+  session: any | null;
+  isAuthenticated: boolean;
+  isLoadingAuth: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
+  signOut: () => Promise<void>;
+
   companies: Company[];
   activeCompany: Company | null;
   setActiveCompanyId: (id: string) => void;
@@ -64,7 +81,11 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [profile] = useState<Profile>(DEMO_PROFILE);
+  const [user, setUser] = useState<any | null>(null);
+  const [session, setSession] = useState<any | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [profile, setProfile] = useState<Profile>(DEMO_PROFILE);
+
   const [companies, setCompanies] = useState<Company[]>(DEMO_COMPANIES);
   const [activeCompanyId, setActiveCompanyId] = useState<string>(DEMO_COMPANIES[0].id);
   const [people, setPeople] = useState<Person[]>(DEMO_PEOPLE);
@@ -72,9 +93,95 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [shareLinks, setShareLinks] = useState<ShareLink[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isCloudConnected, setIsCloudConnected] = useState(isSupabaseConfigured);
+  const [isCloudConnected] = useState(isSupabaseConfigured);
 
-  // 1. Cargar datos iniciales (Local + Nube Supabase)
+  // 1. Manejo de Autenticación con Supabase
+  useEffect(() => {
+    async function initAuth() {
+      if (supabase && isSupabaseConfigured) {
+        try {
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (currentSession) {
+            setSession(currentSession);
+            setUser(currentSession.user);
+            setProfile({
+              id: currentSession.user.id,
+              full_name: currentSession.user.user_metadata?.full_name || currentSession.user.email?.split('@')[0] || 'Administrador',
+              email: currentSession.user.email || '',
+              role: 'owner',
+              created_at: currentSession.user.created_at || new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            });
+          }
+
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+            setSession(newSession);
+            setUser(newSession?.user || null);
+            if (newSession?.user) {
+              setProfile({
+                id: newSession.user.id,
+                full_name: newSession.user.user_metadata?.full_name || newSession.user.email?.split('@')[0] || 'Administrador',
+                email: newSession.user.email || '',
+                role: 'owner',
+                created_at: newSession.user.created_at || new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              });
+            }
+          });
+
+          return () => {
+            subscription.unsubscribe();
+          };
+        } catch (err) {
+          console.warn('Error inicializando auth de Supabase:', err);
+        } finally {
+          setIsLoadingAuth(false);
+        }
+      } else {
+        setIsLoadingAuth(false);
+      }
+    }
+
+    initAuth();
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    const { user: loggedUser, error } = await signInWithEmail(email, password);
+    if (!error && loggedUser) {
+      setUser(loggedUser);
+      setProfile(prev => ({
+        ...prev,
+        id: loggedUser.id,
+        email: loggedUser.email || email,
+        full_name: loggedUser.user_metadata?.full_name || email.split('@')[0],
+      }));
+      return { error: null };
+    }
+    return { error };
+  };
+
+  const signUp = async (email: string, password: string, fullName: string) => {
+    const { user: registeredUser, error } = await signUpWithEmail(email, password, fullName);
+    if (!error && registeredUser) {
+      setUser(registeredUser);
+      setProfile(prev => ({
+        ...prev,
+        id: registeredUser.id,
+        email: registeredUser.email || email,
+        full_name: fullName,
+      }));
+      return { error: null };
+    }
+    return { error };
+  };
+
+  const signOut = async () => {
+    await signOutUser();
+    setUser(null);
+    setSession(null);
+  };
+
+  // 2. Cargar datos iniciales (Local + Nube Supabase)
   useEffect(() => {
     async function loadData() {
       setIsSyncing(true);
@@ -110,24 +217,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             if (!cloudCompanies.find(c => c.id === activeCompanyId)) {
               setActiveCompanyId(cloudCompanies[0].id);
             }
-          } else {
-            // Si la base de datos está vacía, sembrar los datos iniciales
-            DEMO_COMPANIES.forEach(c => saveCompanyToSupabase(c));
           }
 
           if (cloudPeople && cloudPeople.length > 0) {
             setPeople(cloudPeople);
-          } else {
-            DEMO_PEOPLE.forEach(p => savePersonToSupabase(p));
           }
 
           if (cloudReceipts && cloudReceipts.length > 0) {
             setReceipts(cloudReceipts);
-          } else {
-            DEMO_RECEIPTS.forEach(r => saveReceiptToSupabase(r));
           }
-
-          setIsCloudConnected(true);
         } catch (err) {
           console.warn('Error sincronizando con Supabase:', err);
         }
@@ -138,9 +236,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     loadData();
-  }, []);
+  }, [activeCompanyId]);
 
-  // 2. Persistir siempre en LocalStorage como respaldo
+  // 3. Persistir en LocalStorage como respaldo
   useEffect(() => {
     if (!isLoaded) return;
     try {
@@ -190,7 +288,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       show_payment_info: data.show_payment_info ?? true,
       show_qr_validation: data.show_qr_validation ?? true,
       show_signature: data.show_signature ?? true,
-      created_by: profile.id,
+      created_by: user?.id || profile.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -202,14 +300,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateCompany = (id: string, data: Partial<Company>) => {
-    setCompanies(prev => prev.map(c => {
+    const updatedList = companies.map(c => {
       if (c.id === id) {
-        const updated = { ...c, ...data, updated_at: new Date().toISOString() };
-        saveCompanyToSupabase(updated);
-        return updated;
+        return { ...c, ...data, updated_at: new Date().toISOString() };
       }
       return c;
-    }));
+    });
+    setCompanies(updatedList);
+    const target = updatedList.find(c => c.id === id);
+    if (target) {
+      saveCompanyToSupabase(target);
+    }
   };
 
   // Funciones de Personas
@@ -235,7 +336,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       hire_date: data.hire_date || new Date().toISOString().split('T')[0],
       status: 'active',
       internal_notes: data.internal_notes || null,
-      created_by: profile.id,
+      created_by: user?.id || profile.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -246,14 +347,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updatePerson = (id: string, data: Partial<Person>) => {
-    setPeople(prev => prev.map(p => {
+    const updatedList = people.map(p => {
       if (p.id === id) {
-        const updated = { ...p, ...data, updated_at: new Date().toISOString() };
-        savePersonToSupabase(updated);
-        return updated;
+        return { ...p, ...data, updated_at: new Date().toISOString() };
       }
       return p;
-    }));
+    });
+    setPeople(updatedList);
+    const target = updatedList.find(p => p.id === id);
+    if (target) {
+      savePersonToSupabase(target);
+    }
   };
 
   const archivePerson = (id: string) => {
@@ -290,13 +394,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const comp = companies.find(c => c.id === (data.company_id || activeCompanyId)) || activeCompany!;
     const person = people.find(p => p.id === data.person_id);
     
-    const yearMonth = new Date().toISOString().slice(2, 7).replace('-', '');
-    const folioNum = String(comp.next_folio_number).padStart(4, '0');
-    const autoFolio = `${comp.folio_prefix}-${yearMonth}-${folioNum}`;
-    const autoInternalFolio = `${comp.folio_prefix}INT-015-${folioNum}`;
+    let autoFolio = data.folio;
+    if (!autoFolio) {
+      const yearMonth = new Date().toISOString().slice(2, 7).replace('-', '');
+      const folioNum = String(comp.next_folio_number).padStart(4, '0');
+      autoFolio = `${comp.folio_prefix}-${yearMonth}-${folioNum}`;
+      updateCompany(comp.id, { next_folio_number: comp.next_folio_number + 1 });
+    }
 
-    updateCompany(comp.id, { next_folio_number: comp.next_folio_number + 1 });
-
+    const autoInternalFolio = `${comp.folio_prefix}INT-015-${autoFolio.split('-').pop() || '0001'}`;
     const earnings = data.earnings || [];
     const deductions = data.deductions || [];
     const totals = calculateTotals(earnings, deductions);
@@ -306,7 +412,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       company_id: comp.id,
       person_id: data.person_id || (person?.id || ''),
       receipt_type: data.receipt_type || 'payroll',
-      folio: data.folio || autoFolio,
+      folio: autoFolio,
       internal_folio: data.internal_folio || autoInternalFolio,
       issue_date: data.issue_date || new Date().toISOString().split('T')[0],
       payment_date: data.payment_date || new Date().toISOString().split('T')[0],
@@ -327,7 +433,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       total_earnings: totals.totalEarnings,
       total_deductions: totals.totalDeductions,
       net_total: totals.netTotal,
-      created_by: profile.id,
+      created_by: user?.id || profile.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       earnings: earnings.map((e, idx) => ({ ...e, id: e.id || `ear-${Date.now()}-${idx}`, display_order: idx + 1 })),
@@ -342,7 +448,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateReceipt = (id: string, data: Partial<Receipt>) => {
-    setReceipts(prev => prev.map(r => {
+    let updatedReceipt: Receipt | null = null;
+    const updatedList = receipts.map(r => {
       if (r.id === id) {
         const earnings = data.earnings !== undefined ? data.earnings : r.earnings || [];
         const deductions = data.deductions !== undefined ? data.deductions : r.deductions || [];
@@ -358,12 +465,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           net_total: totals.netTotal,
           updated_at: new Date().toISOString(),
         };
-
-        saveReceiptToSupabase(updated);
+        updatedReceipt = updated;
         return updated;
       }
       return r;
-    }));
+    });
+
+    setReceipts(updatedList);
+    if (updatedReceipt) {
+      saveReceiptToSupabase(updatedReceipt);
+    }
   };
 
   const duplicateReceipt = (id: string): Receipt => {
@@ -409,7 +520,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Enlaces compartidos
   const createShareLink = (receiptId: string, hoursValid = 72) => {
-    const token = generateVerificationCode().replace(/-/g, '').toLowerCase() + Date.now().toString(36);
+    const token = generateSecureToken();
     const expiresAt = new Date(Date.now() + hoursValid * 60 * 60 * 1000).toISOString();
     
     const newLink: ShareLink = {
@@ -419,13 +530,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       expires_at: expiresAt,
       is_revoked: false,
       access_count: 0,
-      created_by: profile.id,
+      created_by: user?.id || profile.id,
       created_at: new Date().toISOString(),
     };
 
     setShareLinks(prev => [...prev, newLink]);
+    saveShareLinkToSupabase(newLink);
 
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    const baseUrl = getAppBaseUrl();
     return {
       token,
       url: `${baseUrl}/share/${token}`,
@@ -461,6 +573,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider
       value={{
         profile,
+        user,
+        session,
+        isAuthenticated: Boolean(user || session),
+        isLoadingAuth,
+        signIn,
+        signUp,
+        signOut,
         companies,
         activeCompany,
         setActiveCompanyId,

@@ -1,20 +1,66 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { 
   ShieldCheck, 
   CheckCircle2, 
   AlertTriangle,
   Lock,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
-import { useApp } from '@/context/app-context';
 import { formatDate } from '@/lib/utils';
 
+interface PublicValidationData {
+  is_valid: boolean;
+  company_name?: string;
+  folio?: string;
+  internal_folio?: string;
+  receipt_type?: string;
+  payment_date?: string;
+  status?: string;
+  verification_code?: string;
+  message?: string;
+}
+
 export function ValidateClient({ code }: { code: string }) {
-  const { getReceiptByVerificationCode } = useApp();
-  const receipt = getReceiptByVerificationCode(code);
+  const [data, setData] = useState<PublicValidationData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function validateCode() {
+      try {
+        setIsLoading(true);
+        const res = await fetch(`/api/validate/${encodeURIComponent(code)}`);
+        if (res.ok) {
+          const json = await res.json();
+          setData(json);
+        } else {
+          setData({ is_valid: false, message: 'No se pudo verificar el comprobante' });
+        }
+      } catch (err) {
+        console.error('Error validando comprobante:', err);
+        setData({ is_valid: false, message: 'Error de conexión con el servidor de validación' });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    if (code) {
+      validateCode();
+    }
+  }, [code]);
+
+  const receiptTypeLabels: Record<string, string> = {
+    payroll: 'Nómina',
+    collaborator_payment: 'Pago a Colaborador',
+    commission: 'Comisiones',
+    fees: 'Honorarios',
+    reimbursement: 'Reembolso',
+    supplier_payment: 'Pago a Proveedor',
+    general: 'Comprobante de Pago',
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-950 text-slate-100 flex flex-col justify-between p-4 sm:p-6">
@@ -32,7 +78,12 @@ export function ValidateClient({ code }: { code: string }) {
           </p>
         </div>
 
-        {receipt ? (
+        {isLoading ? (
+          <div className="bg-white text-slate-900 rounded-2xl p-8 shadow-2xl space-y-4 border border-slate-200 text-center">
+            <Loader2 className="w-8 h-8 text-cyan-600 animate-spin mx-auto" />
+            <p className="text-xs font-bold text-slate-600">Verificando autenticidad en registros seguros...</p>
+          </div>
+        ) : data && data.is_valid ? (
           <div className="bg-white text-slate-900 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-5 border border-slate-200">
             {/* Estado de Validez */}
             <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl flex items-center space-x-3 text-emerald-900">
@@ -45,41 +96,50 @@ export function ValidateClient({ code }: { code: string }) {
               </div>
             </div>
 
-            {/* Metadatos Públicos Seguros */}
+            {/* Metadatos Públicos Seguros (Sin PII, sin importes, sin cuentas) */}
             <div className="space-y-3 divide-y divide-slate-100 text-xs">
               <div className="pt-2 flex justify-between items-center">
                 <span className="font-extrabold text-slate-400 uppercase text-[10px]">EMPRESA EMISORA</span>
                 <span className="font-bold text-slate-900 text-right">
-                  {receipt.company?.business_name || receipt.company?.name || 'Empresa Emisora'}
+                  {data.company_name || 'Empresa Emisora'}
                 </span>
               </div>
 
               <div className="pt-2 flex justify-between items-center">
                 <span className="font-extrabold text-slate-400 uppercase text-[10px]">FOLIO DEL RECIBO</span>
-                <span className="font-black text-slate-900 font-mono text-sm">{receipt.folio}</span>
+                <span className="font-black text-slate-900 font-mono text-sm">{data.folio}</span>
+              </div>
+
+              {data.internal_folio && (
+                <div className="pt-2 flex justify-between items-center">
+                  <span className="font-extrabold text-slate-400 uppercase text-[10px]">FOLIO INTERNO</span>
+                  <span className="font-bold text-slate-700 font-mono">{data.internal_folio}</span>
+                </div>
+              )}
+
+              <div className="pt-2 flex justify-between items-center">
+                <span className="font-extrabold text-slate-400 uppercase text-[10px]">TIPO DE COMPROBANTE</span>
+                <span className="font-semibold text-slate-800">
+                  {data.receipt_type ? (receiptTypeLabels[data.receipt_type] || data.receipt_type) : 'Nómina'}
+                </span>
               </div>
 
               <div className="pt-2 flex justify-between items-center">
-                <span className="font-extrabold text-slate-400 uppercase text-[10px]">FOLIO INTERNO</span>
-                <span className="font-bold text-slate-700 font-mono">{receipt.internal_folio || 'SYSSINT-015-0789'}</span>
-              </div>
-
-              <div className="pt-2 flex justify-between items-center">
-                <span className="font-extrabold text-slate-400 uppercase text-[10px]">FECHA DE EMISIÓN / PAGO</span>
-                <span className="font-semibold text-slate-800">{formatDate(receipt.payment_date, 'clean')}</span>
+                <span className="font-extrabold text-slate-400 uppercase text-[10px]">FECHA DE PAGO</span>
+                <span className="font-semibold text-slate-800">{formatDate(data.payment_date, 'clean')}</span>
               </div>
 
               <div className="pt-2 flex justify-between items-center">
                 <span className="font-extrabold text-slate-400 uppercase text-[10px]">ESTADO ACTUAL</span>
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-200">
-                  {receipt.status === 'paid' ? 'Pagado y Liquidado' : receipt.status}
+                  {data.status === 'paid' ? 'Pagado y Liquidado' : (data.status || 'Registrado')}
                 </span>
               </div>
 
               <div className="pt-2 flex justify-between items-center">
                 <span className="font-extrabold text-slate-400 uppercase text-[10px]">CÓDIGO DE VERIFICACIÓN</span>
                 <span className="font-bold font-mono text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded border border-cyan-200">
-                  {receipt.verification_code}
+                  {data.verification_code || code}
                 </span>
               </div>
             </div>
@@ -88,7 +148,7 @@ export function ValidateClient({ code }: { code: string }) {
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 flex items-start space-x-2">
               <Lock className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
               <span>
-                <strong>Protección de Datos:</strong> Por políticas de privacidad y confidencialidad, los datos bancarios, RFC completo y percepciones individuales no se muestran en el portal público de validación.
+                <strong>Protección de Datos:</strong> Por políticas de privacidad y confidencialidad administrativa, los datos bancarios, RFC, importes y percepciones individuales no se exponen en este portal público.
               </span>
             </div>
           </div>

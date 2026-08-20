@@ -492,6 +492,9 @@ export function ReceiptEditClient({ id }: { id: string }) {
                     value={signerSignatureUrl}
                     onChange={(newUrl) => setSignerSignatureUrl(newUrl)}
                     onClear={() => setSignerSignatureUrl('')}
+                    folder="signatures"
+                    companyId={originalReceipt?.company_id}
+                    receiptId={originalReceipt?.id}
                     description="Sube una firma en PNG con fondo transparente para este recibo."
                   />
                 </div>

@@ -249,6 +249,8 @@ export default function CompaniesAndTemplatePage() {
                   value={logoUrl}
                   onChange={(newUrl) => setLogoUrl(newUrl)}
                   onClear={() => setLogoUrl('')}
+                  folder="logos"
+                  companyId={current?.id}
                   description="Sube el logo de tu empresa (PNG con fondo transparente recomendado, JPG o SVG)."
                   recommendedSize="Tamaño recomendado: 500x500 px o superior"
                 />
@@ -426,6 +428,8 @@ export default function CompaniesAndTemplatePage() {
                   value={signerSignatureUrl}
                   onChange={(newUrl) => setSignerSignatureUrl(newUrl)}
                   onClear={() => setSignerSignatureUrl('')}
+                  folder="signatures"
+                  companyId={current?.id}
                   description="Sube un trazo o firma en PNG con fondo transparente."
                   recommendedSize="Recomendado: 300x120 px"
                 />

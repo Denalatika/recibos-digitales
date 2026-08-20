@@ -614,6 +614,8 @@ function NewReceiptForm() {
                     value={signerSignatureUrl}
                     onChange={(newUrl) => setSignerSignatureUrl(newUrl)}
                     onClear={() => setSignerSignatureUrl('')}
+                    folder="signatures"
+                    companyId={activeCompany?.id}
                     description="Sube una firma o trazo en PNG con fondo transparente para este recibo."
                   />
 

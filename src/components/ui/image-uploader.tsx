@@ -13,7 +13,9 @@ interface ImageUploaderProps {
   onClear?: () => void;
   description?: string;
   recommendedSize?: string;
-  folder?: 'logos' | 'signatures';
+  folder?: 'logos' | 'letterheads' | 'signatures';
+  companyId?: string;
+  receiptId?: string;
 }
 
 export const ImageUploader: React.FC<ImageUploaderProps> = ({
@@ -24,6 +26,8 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   description = 'Sube un archivo PNG, JPG o SVG con fondo transparente.',
   recommendedSize = 'Recomendado: 400x400 px o superior',
   folder = 'logos',
+  companyId,
+  receiptId,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showUrlInput, setShowUrlInput] = useState(false);
@@ -43,9 +47,9 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
     try {
       setIsUploading(true);
 
-      // Si Supabase está configurado, subir al Storage en la nube
+      // Si Supabase está configurado, subir al Storage en la nube respetando la estructura multiempresa
       if (isSupabaseConfigured) {
-        const publicUrl = await uploadAssetToSupabase(file, folder);
+        const publicUrl = await uploadAssetToSupabase(file, folder, companyId, receiptId);
         if (publicUrl) {
           onChange(publicUrl);
           setIsUploading(false);

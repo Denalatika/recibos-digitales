@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Receipt as ReceiptIcon, 
@@ -11,18 +11,22 @@ import {
   PlusCircle,
   FileText,
   RotateCcw,
-  CheckCircle2
+  CheckCircle2,
+  LogOut
 } from 'lucide-react';
 import { useApp } from '@/context/app-context';
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
+  const router = useRouter();
   const { 
     companies, 
     activeCompany, 
     setActiveCompanyId, 
     profile, 
-    resetToDemoData 
+    resetToDemoData,
+    signOut,
+    isAuthenticated
   } = useApp();
 
   const navItems = [
@@ -31,6 +35,11 @@ export const Sidebar: React.FC = () => {
     { href: '/people', label: 'Directorio de Personas', icon: Users },
     { href: '/companies', label: 'Empresas y Plantillas', icon: Building2 },
   ];
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/login');
+  };
 
   return (
     <aside className="w-64 bg-slate-900 text-slate-200 min-h-screen flex flex-col justify-between border-r border-slate-800 no-print shrink-0">
@@ -122,19 +131,31 @@ export const Sidebar: React.FC = () => {
           <span>Restablecer Datos Demo</span>
         </button>
 
-        <div className="flex items-center space-x-3 pt-2 border-t border-slate-800/60">
-          <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-white border border-slate-700">
-            {profile.full_name.charAt(0)}
-          </div>
-          <div className="overflow-hidden flex-1">
-            <p className="text-xs font-bold text-white truncate">{profile.full_name}</p>
-            <div className="flex items-center space-x-1">
-              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
-              <span className="text-[10px] text-slate-400 uppercase font-semibold">
-                {profile.role === 'owner' ? 'Propietario' : profile.role}
-              </span>
+        <div className="flex items-center justify-between pt-2 border-t border-slate-800/60">
+          <div className="flex items-center space-x-2.5 overflow-hidden flex-1">
+            <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-white border border-slate-700 shrink-0">
+              {profile.full_name.charAt(0)}
+            </div>
+            <div className="overflow-hidden flex-1">
+              <p className="text-xs font-bold text-white truncate">{profile.full_name}</p>
+              <div className="flex items-center space-x-1">
+                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
+                <span className="text-[10px] text-slate-400 uppercase font-semibold">
+                  {profile.role === 'owner' ? 'Propietario' : profile.role}
+                </span>
+              </div>
             </div>
           </div>
+
+          {isAuthenticated && (
+            <button
+              onClick={handleSignOut}
+              title="Cerrar Sesión"
+              className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors ml-1"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </aside>
