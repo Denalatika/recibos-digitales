@@ -55,14 +55,14 @@ BEGIN
     INSERT INTO public.profiles (id, full_name, email, role)
     VALUES (
         NEW.id,
-        pg_catalog.coalesce(NEW.raw_user_meta_data->>'full_name', NEW.email, 'Usuario'),
+        COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email, 'Usuario'),
         NEW.email,
         'viewer'
     )
     ON CONFLICT (id) DO UPDATE
     SET 
         email = EXCLUDED.email,
-        full_name = pg_catalog.coalesce(EXCLUDED.full_name, public.profiles.full_name),
+        full_name = COALESCE(EXCLUDED.full_name, public.profiles.full_name),
         updated_at = pg_catalog.now();
     RETURN NEW;
 END;

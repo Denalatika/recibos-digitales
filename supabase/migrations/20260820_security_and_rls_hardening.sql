@@ -352,7 +352,7 @@ BEGIN
     SELECT r.id, r.company_id, r.folio, r.internal_folio, r.receipt_type, r.payment_date, r.status, r.verification_code
     INTO v_receipt
     FROM public.receipts r
-    WHERE pg_catalog.upper(pg_catalog.trim(r.verification_code)) = pg_catalog.upper(pg_catalog.trim(p_code))
+    WHERE pg_catalog.upper(pg_catalog.btrim(r.verification_code)) = pg_catalog.upper(pg_catalog.btrim(p_code))
       AND r.deleted_at IS NULL;
 
     IF NOT FOUND THEN
@@ -369,7 +369,7 @@ BEGIN
 
     v_result := pg_catalog.json_build_object(
         'is_valid', true,
-        'company_name', pg_catalog.coalesce(v_company.business_name, v_company.name, 'Empresa Emisora'),
+        'company_name', COALESCE(v_company.business_name, v_company.name, 'Empresa Emisora'),
         'folio', v_receipt.folio,
         'internal_folio', v_receipt.internal_folio,
         'receipt_type', v_receipt.receipt_type,
@@ -425,7 +425,7 @@ BEGIN
     INTO v_person 
     FROM public.people WHERE id = v_receipt.person_id;
 
-    SELECT pg_catalog.coalesce(
+    SELECT COALESCE(
         pg_catalog.json_agg(
             pg_catalog.json_build_object(
                 'concept', e.concept,
@@ -437,7 +437,7 @@ BEGIN
     ) INTO v_earnings
     FROM public.receipt_earnings e WHERE e.receipt_id = v_receipt.id;
 
-    SELECT pg_catalog.coalesce(
+    SELECT COALESCE(
         pg_catalog.json_agg(
             pg_catalog.json_build_object(
                 'concept', d.concept,
