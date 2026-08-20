@@ -2,7 +2,9 @@
 /* eslint-disable @next/next/no-img-element */
 
 import React, { useRef, useState } from 'react';
-import { Upload, X, Image as ImageIcon, Link as LinkIcon, Check } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, Link as LinkIcon, Check, Loader2 } from 'lucide-react';
+import { uploadAssetToSupabase } from '@/lib/supabase-service';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 interface ImageUploaderProps {
   label: string;
@@ -11,6 +13,7 @@ interface ImageUploaderProps {
   onClear?: () => void;
   description?: string;
   recommendedSize?: string;
+  folder?: 'logos' | 'signatures';
 }
 
 export const ImageUploader: React.FC<ImageUploaderProps> = ({
@@ -20,12 +23,14 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
   onClear,
   description = 'Sube un archivo PNG, JPG o SVG con fondo transparente.',
   recommendedSize = 'Recomendado: 400x400 px o superior',
+  folder = 'logos',
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [customUrl, setCustomUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -35,13 +40,32 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        onChange(event.target.result as string);
+    try {
+      setIsUploading(true);
+
+      // Si Supabase está configurado, subir al Storage en la nube
+      if (isSupabaseConfigured) {
+        const publicUrl = await uploadAssetToSupabase(file, folder);
+        if (publicUrl) {
+          onChange(publicUrl);
+          setIsUploading(false);
+          return;
+        }
       }
-    };
-    reader.readAsDataURL(file);
+
+      // Fallback a Base64 Local
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          onChange(event.target.result as string);
+        }
+        setIsUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error procesando imagen:', err);
+      setIsUploading(false);
+    }
   };
 
   const handleApplyUrl = () => {
@@ -107,8 +131,14 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
             </div>
           ) : (
             <div className="w-20 h-20 rounded-xl bg-slate-100 border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 shrink-0">
-              <ImageIcon className="w-6 h-6" />
-              <span className="text-[9px] font-semibold mt-1">Sin imagen</span>
+              {isUploading ? (
+                <Loader2 className="w-6 h-6 animate-spin text-cyan-600" />
+              ) : (
+                <>
+                  <ImageIcon className="w-6 h-6" />
+                  <span className="text-[9px] font-semibold mt-1">Sin imagen</span>
+                </>
+              )}
             </div>
           )}
 
@@ -118,15 +148,22 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({
               type="file"
               accept="image/png,image/jpeg,image/svg+xml,image/webp"
               onChange={handleFileChange}
+              disabled={isUploading}
               className="hidden"
               id={`file-input-${label.replace(/\s+/g, '-').toLowerCase()}`}
             />
             <label
               htmlFor={`file-input-${label.replace(/\s+/g, '-').toLowerCase()}`}
-              className="inline-flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-2 px-3 rounded-lg border border-slate-300 cursor-pointer transition-colors shadow-sm"
+              className={`inline-flex items-center space-x-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs py-2 px-3 rounded-lg border border-slate-300 cursor-pointer transition-colors shadow-sm ${
+                isUploading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              <Upload className="w-3.5 h-3.5 text-cyan-600" />
-              <span>{value ? 'Cambiar Imagen' : 'Seleccionar Imagen'}</span>
+              {isUploading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-600" />
+              ) : (
+                <Upload className="w-3.5 h-3.5 text-cyan-600" />
+              )}
+              <span>{isUploading ? 'Subiendo a la nube...' : (value ? 'Cambiar Imagen' : 'Seleccionar Imagen')}</span>
             </label>
             <p className="text-[10px] text-slate-500 leading-tight">{description}</p>
             <p className="text-[9px] text-slate-400 font-medium">{recommendedSize}</p>

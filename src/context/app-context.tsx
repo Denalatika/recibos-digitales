@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { 
   Company, 
   Person, 
@@ -16,6 +16,16 @@ import {
   DEMO_RECEIPTS 
 } from '@/lib/demo-data';
 import { generateVerificationCode, calculateTotals } from '@/lib/utils';
+import { isSupabaseConfigured } from '@/lib/supabase';
+import { 
+  getCompaniesFromSupabase, 
+  saveCompanyToSupabase,
+  getPeopleFromSupabase,
+  savePersonToSupabase,
+  getReceiptsFromSupabase,
+  saveReceiptToSupabase,
+  deleteReceiptFromSupabase
+} from '@/lib/supabase-service';
 
 interface AppContextType {
   profile: Profile;
@@ -47,6 +57,8 @@ interface AppContextType {
   getShareLink: (token: string) => { link: ShareLink; receipt: Receipt } | null;
 
   resetToDemoData: () => void;
+  isCloudConnected: boolean;
+  isSyncing: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -59,39 +71,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [receipts, setReceipts] = useState<Receipt[]>(DEMO_RECEIPTS);
   const [shareLinks, setShareLinks] = useState<ShareLink[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isCloudConnected, setIsCloudConnected] = useState(isSupabaseConfigured);
 
-  // Cargar estado inicial de LocalStorage si existe
+  // 1. Cargar datos iniciales (Local + Nube Supabase)
   useEffect(() => {
-    try {
-      const savedCompanies = localStorage.getItem('rdp_companies');
-      const savedPeople = localStorage.getItem('rdp_people');
-      const savedReceipts = localStorage.getItem('rdp_receipts');
-      const savedShareLinks = localStorage.getItem('rdp_share_links');
-      const savedActiveCompanyId = localStorage.getItem('rdp_active_company_id');
+    async function loadData() {
+      setIsSyncing(true);
 
-      if (savedCompanies) {
-        const parsed = JSON.parse(savedCompanies);
-        // Garantizar que la empresa de muestra tenga el logotipo asignado
-        const updated = parsed.map((c: Company) => {
-          if (c.id === 'comp-syss-001' && !c.logo_url) {
-            return { ...c, logo_url: '/logo-syss.png' };
-          }
-          return c;
-        });
-        setCompanies(updated);
+      // Cargar caché local primero para rapidez
+      try {
+        const savedCompanies = localStorage.getItem('rdp_companies');
+        const savedPeople = localStorage.getItem('rdp_people');
+        const savedReceipts = localStorage.getItem('rdp_receipts');
+        const savedShareLinks = localStorage.getItem('rdp_share_links');
+        const savedActiveCompanyId = localStorage.getItem('rdp_active_company_id');
+
+        if (savedCompanies) setCompanies(JSON.parse(savedCompanies));
+        if (savedPeople) setPeople(JSON.parse(savedPeople));
+        if (savedReceipts) setReceipts(JSON.parse(savedReceipts));
+        if (savedShareLinks) setShareLinks(JSON.parse(savedShareLinks));
+        if (savedActiveCompanyId) setActiveCompanyId(savedActiveCompanyId);
+      } catch (err) {
+        console.warn('Error leyendo LocalStorage:', err);
       }
-      if (savedPeople) setPeople(JSON.parse(savedPeople));
-      if (savedReceipts) setReceipts(JSON.parse(savedReceipts));
-      if (savedShareLinks) setShareLinks(JSON.parse(savedShareLinks));
-      if (savedActiveCompanyId) setActiveCompanyId(savedActiveCompanyId);
-    } catch {
-      // Ignorar errores de parseo y continuar con demo data
-    } finally {
+
+      // Si Supabase está configurado, sincronizar con la nube
+      if (isSupabaseConfigured) {
+        try {
+          const [cloudCompanies, cloudPeople, cloudReceipts] = await Promise.all([
+            getCompaniesFromSupabase(),
+            getPeopleFromSupabase(),
+            getReceiptsFromSupabase(),
+          ]);
+
+          if (cloudCompanies && cloudCompanies.length > 0) {
+            setCompanies(cloudCompanies);
+            if (!cloudCompanies.find(c => c.id === activeCompanyId)) {
+              setActiveCompanyId(cloudCompanies[0].id);
+            }
+          } else {
+            // Si la base de datos está vacía, sembrar los datos iniciales
+            DEMO_COMPANIES.forEach(c => saveCompanyToSupabase(c));
+          }
+
+          if (cloudPeople && cloudPeople.length > 0) {
+            setPeople(cloudPeople);
+          } else {
+            DEMO_PEOPLE.forEach(p => savePersonToSupabase(p));
+          }
+
+          if (cloudReceipts && cloudReceipts.length > 0) {
+            setReceipts(cloudReceipts);
+          } else {
+            DEMO_RECEIPTS.forEach(r => saveReceiptToSupabase(r));
+          }
+
+          setIsCloudConnected(true);
+        } catch (err) {
+          console.warn('Error sincronizando con Supabase:', err);
+        }
+      }
+
       setIsLoaded(true);
+      setIsSyncing(false);
     }
+
+    loadData();
   }, []);
 
-  // Persistir en LocalStorage
+  // 2. Persistir siempre en LocalStorage como respaldo
   useEffect(() => {
     if (!isLoaded) return;
     try {
@@ -135,7 +184,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paper_size: data.paper_size || 'letter_landscape',
       currency: data.currency || 'MXN',
       timezone: data.timezone || 'America/Mexico_City',
-      legal_disclaimer: data.legal_disclaimer || 'Este documento es un comprobante administrativo interno y no sustituye un CFDI de nómina timbrado.',
+      legal_disclaimer: '',
       show_header: data.show_header ?? true,
       show_footer: data.show_footer ?? true,
       show_payment_info: data.show_payment_info ?? true,
@@ -148,13 +197,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setCompanies(prev => [...prev, newCompany]);
     setActiveCompanyId(newCompany.id);
+    saveCompanyToSupabase(newCompany);
     return newCompany;
   };
 
   const updateCompany = (id: string, data: Partial<Company>) => {
     setCompanies(prev => prev.map(c => {
       if (c.id === id) {
-        return { ...c, ...data, updated_at: new Date().toISOString() };
+        const updated = { ...c, ...data, updated_at: new Date().toISOString() };
+        saveCompanyToSupabase(updated);
+        return updated;
       }
       return c;
     }));
@@ -189,13 +241,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setPeople(prev => [...prev, newPerson]);
+    savePersonToSupabase(newPerson);
     return newPerson;
   };
 
   const updatePerson = (id: string, data: Partial<Person>) => {
     setPeople(prev => prev.map(p => {
       if (p.id === id) {
-        return { ...p, ...data, updated_at: new Date().toISOString() };
+        const updated = { ...p, ...data, updated_at: new Date().toISOString() };
+        savePersonToSupabase(updated);
+        return updated;
       }
       return p;
     }));
@@ -235,13 +290,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const comp = companies.find(c => c.id === (data.company_id || activeCompanyId)) || activeCompany!;
     const person = people.find(p => p.id === data.person_id);
     
-    // Generar folio consecutivo
     const yearMonth = new Date().toISOString().slice(2, 7).replace('-', '');
     const folioNum = String(comp.next_folio_number).padStart(4, '0');
     const autoFolio = `${comp.folio_prefix}-${yearMonth}-${folioNum}`;
     const autoInternalFolio = `${comp.folio_prefix}INT-015-${folioNum}`;
 
-    // Incrementar folio en la empresa
     updateCompany(comp.id, { next_folio_number: comp.next_folio_number + 1 });
 
     const earnings = data.earnings || [];
@@ -263,7 +316,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: data.status || 'draft',
       currency: data.currency || comp.currency || 'MXN',
       payment_method: data.payment_method || 'bank_transfer',
-      bank_name: data.bank_name || person?.bank_name || 'Banco',
+      bank_name: data.bank_name || person?.bank_name || 'Santander',
       bank_account_masked: data.bank_account_masked || person?.bank_account_masked || '•••• 0000',
       deposit_date: data.deposit_date || data.payment_date || new Date().toISOString().split('T')[0],
       verification_code: data.verification_code || generateVerificationCode(),
@@ -284,6 +337,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setReceipts(prev => [newReceipt, ...prev]);
+    saveReceiptToSupabase(newReceipt);
     return newReceipt;
   };
 
@@ -294,7 +348,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const deductions = data.deductions !== undefined ? data.deductions : r.deductions || [];
         const totals = calculateTotals(earnings, deductions);
 
-        return {
+        const updated: Receipt = {
           ...r,
           ...data,
           earnings,
@@ -304,13 +358,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           net_total: totals.netTotal,
           updated_at: new Date().toISOString(),
         };
+
+        saveReceiptToSupabase(updated);
+        return updated;
       }
       return r;
     }));
   };
 
   const duplicateReceipt = (id: string): Receipt => {
-    const original = receipts.find(r => r.id === id);
+    const original = getReceipt(id);
     if (!original) throw new Error('Recibo no encontrado');
 
     const comp = companies.find(c => c.id === original.company_id) || activeCompany!;
@@ -332,11 +389,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       verification_code: generateVerificationCode(),
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      earnings: (original.earnings || []).map((e, idx) => ({ ...e, id: `ear-dup-${Date.now()}-${idx}` })),
-      deductions: (original.deductions || []).map((d, idx) => ({ ...d, id: `ded-dup-${Date.now()}-${idx}` })),
+      earnings: (original.earnings || []).map((e, idx) => ({ ...e, id: `ear-${Date.now()}-${idx}` })),
+      deductions: (original.deductions || []).map((d, idx) => ({ ...d, id: `ded-${Date.now()}-${idx}` })),
     };
 
     setReceipts(prev => [duplicated, ...prev]);
+    saveReceiptToSupabase(duplicated);
     return duplicated;
   };
 
@@ -346,15 +404,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteReceipt = (id: string) => {
     setReceipts(prev => prev.filter(r => r.id !== id));
+    deleteReceiptFromSupabase(id);
   };
 
-  // Enlaces para compartir
-  const createShareLink = (receiptId: string, hoursValid = 48) => {
-    const token = `sh_${Math.random().toString(36).substring(2, 10)}_${Date.now().toString(36)}`;
-    const expiresAt = new Date(Date.now() + hoursValid * 3600 * 1000).toISOString();
+  // Enlaces compartidos
+  const createShareLink = (receiptId: string, hoursValid = 72) => {
+    const token = generateVerificationCode().replace(/-/g, '').toLowerCase() + Date.now().toString(36);
+    const expiresAt = new Date(Date.now() + hoursValid * 60 * 60 * 1000).toISOString();
     
     const newLink: ShareLink = {
-      id: `shk-${Date.now()}`,
+      id: `link-${Date.now()}`,
       receipt_id: receiptId,
       token,
       expires_at: expiresAt,
@@ -365,22 +424,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setShareLinks(prev => [...prev, newLink]);
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
     return {
       token,
-      url: `${origin}/share/${token}`,
+      url: `${baseUrl}/share/${token}`,
       expiresAt,
     };
   };
 
   const revokeShareLink = (token: string) => {
-    setShareLinks(prev => prev.map(sl => sl.token === token ? { ...sl, is_revoked: true } : sl));
+    setShareLinks(prev => prev.map(l => l.token === token ? { ...l, is_revoked: true } : l));
   };
 
   const getShareLink = (token: string) => {
-    const link = shareLinks.find(sl => sl.token === token);
+    const link = shareLinks.find(l => l.token === token && !l.is_revoked);
     if (!link) return null;
-    if (link.is_revoked) return null;
     if (new Date(link.expires_at) < new Date()) return null;
 
     const receipt = getReceipt(link.receipt_id);
@@ -391,10 +450,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetToDemoData = () => {
     setCompanies(DEMO_COMPANIES);
+    setActiveCompanyId(DEMO_COMPANIES[0].id);
     setPeople(DEMO_PEOPLE);
     setReceipts(DEMO_RECEIPTS);
     setShareLinks([]);
-    setActiveCompanyId(DEMO_COMPANIES[0].id);
     localStorage.clear();
   };
 
@@ -426,6 +485,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         revokeShareLink,
         getShareLink,
         resetToDemoData,
+        isCloudConnected,
+        isSyncing,
       }}
     >
       {children}
@@ -436,7 +497,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 export const useApp = () => {
   const context = useContext(AppContext);
   if (!context) {
-    throw new Error('useApp debe ser utilizado dentro de un AppProvider');
+    throw new Error('useApp must be used within an AppProvider');
   }
   return context;
 };
