@@ -1,7 +1,10 @@
 -- ==============================================================================
--- MIGRACIÓN DE ENDURECIMIENTO DE SEGURIDAD Y POLÍTICAS RLS (PostgreSQL / Supabase)
+-- MIGRACIÓN 2: ENDURECIMIENTO DE SEGURIDAD Y POLÍTICAS RLS (Transaccional)
 -- Archivo: 20260820_security_and_rls_hardening.sql
+-- Ejecutar DESPUÉS de 20260820_auth_compatibility_bootstrap.sql
 -- ==============================================================================
+
+BEGIN;
 
 -- 1. REVOCAR PERMISOS DIRECTOS A ROL ANÓNIMO SOBRE TABLAS PRIVADAS
 REVOKE ALL ON TABLE public.companies FROM anon;
@@ -13,7 +16,7 @@ REVOKE ALL ON TABLE public.share_links FROM anon;
 REVOKE ALL ON TABLE public.profiles FROM anon;
 REVOKE ALL ON TABLE public.company_members FROM anon;
 
--- 2. ELIMINAR TODAS LAS POLÍTICAS INSEGURAS O PÚBLICAS ANTERIORES
+-- 2. ELIMINAR POLÍTICAS ANTERIORES PARA APLICAR LAS NUEVAS SIN CONFLICTOS
 DROP POLICY IF EXISTS "Acceso completo a companies" ON public.companies;
 DROP POLICY IF EXISTS "Acceso completo a people" ON public.people;
 DROP POLICY IF EXISTS "Acceso completo a receipts" ON public.receipts;
@@ -21,6 +24,59 @@ DROP POLICY IF EXISTS "Acceso completo a receipt_earnings" ON public.receipt_ear
 DROP POLICY IF EXISTS "Acceso completo a receipt_deductions" ON public.receipt_deductions;
 DROP POLICY IF EXISTS "Acceso completo a share_links" ON public.share_links;
 DROP POLICY IF EXISTS "Acceso público de sólo lectura para validación por código de verificación" ON public.receipts;
+
+DROP POLICY IF EXISTS "Usuarios autenticados pueden ver sus empresas" ON public.companies;
+DROP POLICY IF EXISTS "Usuarios autenticados pueden crear empresas" ON public.companies;
+DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar sus empresas" ON public.companies;
+DROP POLICY IF EXISTS "Propietarios pueden eliminar sus empresas" ON public.companies;
+DROP POLICY IF EXISTS "Miembros pueden ver sus empresas" ON public.companies;
+DROP POLICY IF EXISTS "Administradores pueden actualizar sus empresas" ON public.companies;
+
+DROP POLICY IF EXISTS "Usuarios autenticados pueden ver personas de su empresa" ON public.people;
+DROP POLICY IF EXISTS "Usuarios autenticados pueden crear personas en su empresa" ON public.people;
+DROP POLICY IF EXISTS "Usuarios autenticados pueden modificar personas de su empresa" ON public.people;
+DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar personas de su empresa" ON public.people;
+DROP POLICY IF EXISTS "Miembros pueden ver colaboradores" ON public.people;
+DROP POLICY IF EXISTS "Operadores y administradores pueden crear colaboradores" ON public.people;
+DROP POLICY IF EXISTS "Operadores y administradores pueden modificar colaboradores" ON public.people;
+DROP POLICY IF EXISTS "Administradores pueden eliminar colaboradores" ON public.people;
+
+DROP POLICY IF EXISTS "Usuarios autenticados pueden ver recibos de su empresa" ON public.receipts;
+DROP POLICY IF EXISTS "Usuarios autenticados pueden crear recibos en su empresa" ON public.receipts;
+DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar recibos de su empresa" ON public.receipts;
+DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar recibos de su empresa" ON public.receipts;
+DROP POLICY IF EXISTS "Miembros pueden ver recibos" ON public.receipts;
+DROP POLICY IF EXISTS "Operadores y administradores pueden crear recibos" ON public.receipts;
+DROP POLICY IF EXISTS "Operadores y administradores pueden modificar recibos" ON public.receipts;
+DROP POLICY IF EXISTS "Administradores pueden eliminar recibos" ON public.receipts;
+
+DROP POLICY IF EXISTS "Acceso a percepciones por miembros de la empresa" ON public.receipt_earnings;
+DROP POLICY IF EXISTS "Acceso a deducciones por miembros de la empresa" ON public.receipt_deductions;
+DROP POLICY IF EXISTS "Gestión de enlaces compartidos por miembros" ON public.share_links;
+DROP POLICY IF EXISTS "Miembros pueden ver percepciones" ON public.receipt_earnings;
+DROP POLICY IF EXISTS "Operadores pueden gestionar percepciones" ON public.receipt_earnings;
+DROP POLICY IF EXISTS "Operadores pueden actualizar percepciones" ON public.receipt_earnings;
+DROP POLICY IF EXISTS "Operadores pueden eliminar percepciones" ON public.receipt_earnings;
+DROP POLICY IF EXISTS "Miembros pueden ver deducciones" ON public.receipt_deductions;
+DROP POLICY IF EXISTS "Operadores pueden gestionar deducciones" ON public.receipt_deductions;
+DROP POLICY IF EXISTS "Operadores pueden actualizar deducciones" ON public.receipt_deductions;
+DROP POLICY IF EXISTS "Operadores pueden eliminar deducciones" ON public.receipt_deductions;
+DROP POLICY IF EXISTS "Miembros pueden ver enlaces compartidos" ON public.share_links;
+DROP POLICY IF EXISTS "Operadores pueden crear enlaces compartidos" ON public.share_links;
+DROP POLICY IF EXISTS "Operadores pueden actualizar enlaces compartidos" ON public.share_links;
+DROP POLICY IF EXISTS "Administradores pueden eliminar enlaces compartidos" ON public.share_links;
+
+DROP POLICY IF EXISTS "Usuarios pueden ver su propio perfil" ON public.profiles;
+DROP POLICY IF EXISTS "Usuarios pueden actualizar su perfil" ON public.profiles;
+DROP POLICY IF EXISTS "Usuarios pueden actualizar sus datos de perfil" ON public.profiles;
+
+DROP POLICY IF EXISTS "Usuarios pueden ver membresías de sus empresas" ON public.company_members;
+DROP POLICY IF EXISTS "Administradores pueden gestionar miembros" ON public.company_members;
+DROP POLICY IF EXISTS "Miembros pueden ver miembros de su empresa" ON public.company_members;
+DROP POLICY IF EXISTS "Administradores pueden agregar miembros" ON public.company_members;
+DROP POLICY IF EXISTS "Administradores pueden modificar miembros" ON public.company_members;
+DROP POLICY IF EXISTS "Administradores pueden eliminar miembros" ON public.company_members;
+
 DROP POLICY IF EXISTS "Acceso público lectura a receipt-assets" ON storage.objects;
 DROP POLICY IF EXISTS "Acceso público subida a receipt-assets" ON storage.objects;
 DROP POLICY IF EXISTS "Acceso público actualización a receipt-assets" ON storage.objects;
@@ -36,7 +92,7 @@ DROP POLICY IF EXISTS "Subida privada restringida a miembros de la empresa" ON s
 DROP POLICY IF EXISTS "Modificación privada restringida a administradores" ON storage.objects;
 DROP POLICY IF EXISTS "Eliminación privada restringida a propietarios" ON storage.objects;
 
--- 3. ASEGURAR QUE RLS ESTÉ HABILITADO EN TODAS LAS TABLAS
+-- 3. HABILITACIÓN DE RLS EN TODAS LAS TABLAS
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.people ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.receipts ENABLE ROW LEVEL SECURITY;
@@ -46,243 +102,245 @@ ALTER TABLE public.share_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.company_members ENABLE ROW LEVEL SECURITY;
 
--- 4. POLÍTICAS PARA PERFILES (PROFILES)
--- Los usuarios solo pueden ver y actualizar su propio perfil. No pueden autoasignarse roles privilegiados.
-DROP POLICY IF EXISTS "Usuarios pueden ver su propio perfil" ON public.profiles;
+-- ==============================================================================
+-- 4. POLÍTICAS RLS PARA PERFILES (PROFILES)
+-- ==============================================================================
 CREATE POLICY "Usuarios pueden ver su propio perfil" ON public.profiles
     FOR SELECT TO authenticated
-    USING (id::text = auth.uid()::text);
+    USING (id = auth.uid());
 
-DROP POLICY IF EXISTS "Usuarios pueden actualizar su perfil" ON public.profiles;
-CREATE POLICY "Usuarios pueden actualizar su perfil" ON public.profiles
+CREATE POLICY "Usuarios pueden actualizar sus datos de perfil" ON public.profiles
     FOR UPDATE TO authenticated
-    USING (id::text = auth.uid()::text)
-    WITH CHECK (id::text = auth.uid()::text);
+    USING (id = auth.uid())
+    WITH CHECK (id = auth.uid());
 
--- 5. POLÍTICAS ESTRICTAS PARA EMPRESAS (COMPANIES)
-DROP POLICY IF EXISTS "Usuarios autenticados pueden ver sus empresas" ON public.companies;
-CREATE POLICY "Usuarios autenticados pueden ver sus empresas" ON public.companies
+-- ==============================================================================
+-- 5. POLÍTICAS RLS PARA MEMBRESÍAS (COMPANY_MEMBERS)
+-- Sin subconsultas recursivas: Delega en public.is_company_member (SECURITY DEFINER)
+-- ==============================================================================
+-- Consulta: El usuario puede ver su propia membresía o las de las empresas donde participa
+CREATE POLICY "Miembros pueden ver miembros de su empresa" ON public.company_members
+    FOR SELECT TO authenticated
+    USING (
+        user_id = auth.uid()
+        OR public.is_company_member(company_id, NULL)
+    );
+
+-- Inserción: Owner puede asignar cualquier rol. Admin puede asignar solo admin, operator o viewer (NO owner)
+CREATE POLICY "Administradores pueden agregar miembros" ON public.company_members
+    FOR INSERT TO authenticated
+    WITH CHECK (
+        (public.is_company_member(company_id, ARRAY['owner']))
+        OR
+        (public.is_company_member(company_id, ARRAY['admin']) AND role <> 'owner')
+    );
+
+-- Modificación: Owner puede modificar cualquier membresía. Admin solo filas que NO sean owner y NO puede elevar a owner
+CREATE POLICY "Administradores pueden modificar miembros" ON public.company_members
+    FOR UPDATE TO authenticated
+    USING (
+        (public.is_company_member(company_id, ARRAY['owner']))
+        OR
+        (public.is_company_member(company_id, ARRAY['admin']) AND role <> 'owner')
+    )
+    WITH CHECK (
+        (public.is_company_member(company_id, ARRAY['owner']))
+        OR
+        (public.is_company_member(company_id, ARRAY['admin']) AND role <> 'owner')
+    );
+
+-- Eliminación: Owner puede eliminar cualquier miembro (salvo el último owner, protegido por trigger). Admin solo miembros no-owner
+CREATE POLICY "Administradores pueden eliminar miembros" ON public.company_members
+    FOR DELETE TO authenticated
+    USING (
+        (public.is_company_member(company_id, ARRAY['owner']))
+        OR
+        (public.is_company_member(company_id, ARRAY['admin']) AND role <> 'owner')
+    );
+
+-- ==============================================================================
+-- 6. POLÍTICAS RLS PARA EMPRESAS (COMPANIES)
+-- ==============================================================================
+CREATE POLICY "Miembros pueden ver sus empresas" ON public.companies
     FOR SELECT TO authenticated
     USING (
         created_by = auth.uid()::text 
-        OR id IN (
-            SELECT company_id FROM public.company_members 
-            WHERE user_id::text = auth.uid()::text
-        )
+        OR public.is_company_member(id, NULL)
     );
 
-DROP POLICY IF EXISTS "Usuarios autenticados pueden crear empresas" ON public.companies;
 CREATE POLICY "Usuarios autenticados pueden crear empresas" ON public.companies
     FOR INSERT TO authenticated
     WITH CHECK (
-        created_by = auth.uid()::text 
-        OR created_by IS NULL
+        created_by = auth.uid()::text
     );
 
-DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar sus empresas" ON public.companies;
-CREATE POLICY "Usuarios autenticados pueden actualizar sus empresas" ON public.companies
+CREATE POLICY "Administradores pueden actualizar sus empresas" ON public.companies
     FOR UPDATE TO authenticated
     USING (
         created_by = auth.uid()::text 
-        OR id IN (
-            SELECT company_id FROM public.company_members 
-            WHERE user_id::text = auth.uid()::text AND role IN ('owner', 'admin')
-        )
+        OR public.is_company_member(id, ARRAY['owner', 'admin'])
     )
     WITH CHECK (
         created_by = auth.uid()::text 
-        OR id IN (
-            SELECT company_id FROM public.company_members 
-            WHERE user_id::text = auth.uid()::text AND role IN ('owner', 'admin')
-        )
+        OR public.is_company_member(id, ARRAY['owner', 'admin'])
     );
 
-DROP POLICY IF EXISTS "Propietarios pueden eliminar sus empresas" ON public.companies;
 CREATE POLICY "Propietarios pueden eliminar sus empresas" ON public.companies
     FOR DELETE TO authenticated
     USING (
         created_by = auth.uid()::text 
-        OR id IN (
-            SELECT company_id FROM public.company_members 
-            WHERE user_id::text = auth.uid()::text AND role = 'owner'
-        )
-    );
-
--- 6. POLÍTICAS ESTRICTAS PARA PERSONAS / COLABORADORES (PEOPLE)
-DROP POLICY IF EXISTS "Usuarios autenticados pueden ver personas de su empresa" ON public.people;
-CREATE POLICY "Usuarios autenticados pueden ver personas de su empresa" ON public.people
-    FOR SELECT TO authenticated
-    USING (
-        company_id IN (
-            SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-            UNION
-            SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
-    );
-
-DROP POLICY IF EXISTS "Usuarios autenticados pueden crear personas en su empresa" ON public.people;
-CREATE POLICY "Usuarios autenticados pueden crear personas en su empresa" ON public.people
-    FOR INSERT TO authenticated
-    WITH CHECK (
-        company_id IN (
-            SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-            UNION
-            SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
-    );
-
-DROP POLICY IF EXISTS "Usuarios autenticados pueden modificar personas de su empresa" ON public.people;
-CREATE POLICY "Usuarios autenticados pueden modificar personas de su empresa" ON public.people
-    FOR UPDATE TO authenticated
-    USING (
-        company_id IN (
-            SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-            UNION
-            SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
-    )
-    WITH CHECK (
-        company_id IN (
-            SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-            UNION
-            SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
-    );
-
-DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar personas de su empresa" ON public.people;
-CREATE POLICY "Usuarios autenticados pueden eliminar personas de su empresa" ON public.people
-    FOR DELETE TO authenticated
-    USING (
-        company_id IN (
-            SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-            UNION
-            SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
-    );
-
--- 7. POLÍTICAS ESTRICTAS PARA RECIBOS (RECEIPTS)
-DROP POLICY IF EXISTS "Usuarios autenticados pueden ver recibos de su empresa" ON public.receipts;
-CREATE POLICY "Usuarios autenticados pueden ver recibos de su empresa" ON public.receipts
-    FOR SELECT TO authenticated
-    USING (
-        company_id IN (
-            SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-            UNION
-            SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
-    );
-
-DROP POLICY IF EXISTS "Usuarios autenticados pueden crear recibos en su empresa" ON public.receipts;
-CREATE POLICY "Usuarios autenticados pueden crear recibos en su empresa" ON public.receipts
-    FOR INSERT TO authenticated
-    WITH CHECK (
-        company_id IN (
-            SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-            UNION
-            SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
-    );
-
-DROP POLICY IF EXISTS "Usuarios autenticados pueden actualizar recibos de su empresa" ON public.receipts;
-CREATE POLICY "Usuarios autenticados pueden actualizar recibos de su empresa" ON public.receipts
-    FOR UPDATE TO authenticated
-    USING (
-        company_id IN (
-            SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-            UNION
-            SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
-    )
-    WITH CHECK (
-        company_id IN (
-            SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-            UNION
-            SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
-    );
-
-DROP POLICY IF EXISTS "Usuarios autenticados pueden eliminar recibos de su empresa" ON public.receipts;
-CREATE POLICY "Usuarios autenticados pueden eliminar recibos de su empresa" ON public.receipts
-    FOR DELETE TO authenticated
-    USING (
-        company_id IN (
-            SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-            UNION
-            SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
-    );
-
--- 8. POLÍTICAS ESTRICTAS PARA PERCEPCIONES Y DEDUCCIONES
-DROP POLICY IF EXISTS "Acceso a percepciones por miembros de la empresa" ON public.receipt_earnings;
-CREATE POLICY "Acceso a percepciones por miembros de la empresa" ON public.receipt_earnings
-    FOR ALL TO authenticated
-    USING (
-        receipt_id IN (
-            SELECT id FROM public.receipts WHERE company_id IN (
-                SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-                UNION
-                SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-            )
-        )
-    )
-    WITH CHECK (
-        receipt_id IN (
-            SELECT id FROM public.receipts WHERE company_id IN (
-                SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-                UNION
-                SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-            )
-        )
-    );
-
-DROP POLICY IF EXISTS "Acceso a deducciones por miembros de la empresa" ON public.receipt_deductions;
-CREATE POLICY "Acceso a deducciones por miembros de la empresa" ON public.receipt_deductions
-    FOR ALL TO authenticated
-    USING (
-        receipt_id IN (
-            SELECT id FROM public.receipts WHERE company_id IN (
-                SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-                UNION
-                SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-            )
-        )
-    )
-    WITH CHECK (
-        receipt_id IN (
-            SELECT id FROM public.receipts WHERE company_id IN (
-                SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-                UNION
-                SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-            )
-        )
-    );
-
--- 9. POLÍTICAS ESTRICTAS PARA ENLACES COMPARTIDOS (SHARE_LINKS)
-DROP POLICY IF EXISTS "Gestión de enlaces compartidos por miembros" ON public.share_links;
-CREATE POLICY "Gestión de enlaces compartidos por miembros" ON public.share_links
-    FOR ALL TO authenticated
-    USING (
-        receipt_id IN (
-            SELECT id FROM public.receipts WHERE company_id IN (
-                SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-                UNION
-                SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-            )
-        )
-    )
-    WITH CHECK (
-        receipt_id IN (
-            SELECT id FROM public.receipts WHERE company_id IN (
-                SELECT id FROM public.companies WHERE created_by = auth.uid()::text
-                UNION
-                SELECT company_id FROM public.company_members WHERE user_id::text = auth.uid()::text
-            )
-        )
+        OR public.is_company_member(id, ARRAY['owner'])
     );
 
 -- ==============================================================================
--- 10. FUNCIÓN SEGURA PARA VALIDACIÓN PÚBLICA POR CÓDIGO QR (RPC)
--- NO expone RFC, CURP, NSS, importes, bancos, percepciones, firmas ni datos sensibles
+-- 7. POLÍTICAS RLS PARA PERSONAS / COLABORADORES (PEOPLE)
+-- ==============================================================================
+CREATE POLICY "Miembros pueden ver colaboradores" ON public.people
+    FOR SELECT TO authenticated
+    USING (
+        public.is_company_member(company_id, NULL)
+    );
+
+CREATE POLICY "Operadores y administradores pueden crear colaboradores" ON public.people
+    FOR INSERT TO authenticated
+    WITH CHECK (
+        public.is_company_member(company_id, ARRAY['owner', 'admin', 'operator'])
+    );
+
+CREATE POLICY "Operadores y administradores pueden modificar colaboradores" ON public.people
+    FOR UPDATE TO authenticated
+    USING (
+        public.is_company_member(company_id, ARRAY['owner', 'admin', 'operator'])
+    )
+    WITH CHECK (
+        public.is_company_member(company_id, ARRAY['owner', 'admin', 'operator'])
+    );
+
+CREATE POLICY "Administradores pueden eliminar colaboradores" ON public.people
+    FOR DELETE TO authenticated
+    USING (
+        public.is_company_member(company_id, ARRAY['owner', 'admin'])
+    );
+
+-- ==============================================================================
+-- 8. POLÍTICAS RLS PARA RECIBOS (RECEIPTS)
+-- ==============================================================================
+CREATE POLICY "Miembros pueden ver recibos" ON public.receipts
+    FOR SELECT TO authenticated
+    USING (
+        public.is_company_member(company_id, NULL)
+    );
+
+CREATE POLICY "Operadores y administradores pueden crear recibos" ON public.receipts
+    FOR INSERT TO authenticated
+    WITH CHECK (
+        public.is_company_member(company_id, ARRAY['owner', 'admin', 'operator'])
+    );
+
+CREATE POLICY "Operadores y administradores pueden modificar recibos" ON public.receipts
+    FOR UPDATE TO authenticated
+    USING (
+        public.is_company_member(company_id, ARRAY['owner', 'admin', 'operator'])
+    )
+    WITH CHECK (
+        public.is_company_member(company_id, ARRAY['owner', 'admin', 'operator'])
+    );
+
+CREATE POLICY "Administradores pueden eliminar recibos" ON public.receipts
+    FOR DELETE TO authenticated
+    USING (
+        public.is_company_member(company_id, ARRAY['owner', 'admin'])
+    );
+
+-- ==============================================================================
+-- 9. POLÍTICAS RLS PARA PERCEPCIONES Y DEDUCCIONES
+-- ==============================================================================
+CREATE POLICY "Miembros pueden ver percepciones" ON public.receipt_earnings
+    FOR SELECT TO authenticated
+    USING (
+        public.is_receipt_company_member(receipt_id, NULL)
+    );
+
+CREATE POLICY "Operadores pueden gestionar percepciones" ON public.receipt_earnings
+    FOR INSERT TO authenticated
+    WITH CHECK (
+        public.is_receipt_company_member(receipt_id, ARRAY['owner', 'admin', 'operator'])
+    );
+
+CREATE POLICY "Operadores pueden actualizar percepciones" ON public.receipt_earnings
+    FOR UPDATE TO authenticated
+    USING (
+        public.is_receipt_company_member(receipt_id, ARRAY['owner', 'admin', 'operator'])
+    )
+    WITH CHECK (
+        public.is_receipt_company_member(receipt_id, ARRAY['owner', 'admin', 'operator'])
+    );
+
+CREATE POLICY "Operadores pueden eliminar percepciones" ON public.receipt_earnings
+    FOR DELETE TO authenticated
+    USING (
+        public.is_receipt_company_member(receipt_id, ARRAY['owner', 'admin', 'operator'])
+    );
+
+CREATE POLICY "Miembros pueden ver deducciones" ON public.receipt_deductions
+    FOR SELECT TO authenticated
+    USING (
+        public.is_receipt_company_member(receipt_id, NULL)
+    );
+
+CREATE POLICY "Operadores pueden gestionar deducciones" ON public.receipt_deductions
+    FOR INSERT TO authenticated
+    WITH CHECK (
+        public.is_receipt_company_member(receipt_id, ARRAY['owner', 'admin', 'operator'])
+    );
+
+CREATE POLICY "Operadores pueden actualizar deducciones" ON public.receipt_deductions
+    FOR UPDATE TO authenticated
+    USING (
+        public.is_receipt_company_member(receipt_id, ARRAY['owner', 'admin', 'operator'])
+    )
+    WITH CHECK (
+        public.is_receipt_company_member(receipt_id, ARRAY['owner', 'admin', 'operator'])
+    );
+
+CREATE POLICY "Operadores pueden eliminar deducciones" ON public.receipt_deductions
+    FOR DELETE TO authenticated
+    USING (
+        public.is_receipt_company_member(receipt_id, ARRAY['owner', 'admin', 'operator'])
+    );
+
+-- ==============================================================================
+-- 10. POLÍTICAS RLS PARA ENLACES COMPARTIDOS (SHARE_LINKS)
+-- ==============================================================================
+CREATE POLICY "Miembros pueden ver enlaces compartidos" ON public.share_links
+    FOR SELECT TO authenticated
+    USING (
+        public.is_receipt_company_member(receipt_id, NULL)
+    );
+
+CREATE POLICY "Operadores pueden crear enlaces compartidos" ON public.share_links
+    FOR INSERT TO authenticated
+    WITH CHECK (
+        public.is_receipt_company_member(receipt_id, ARRAY['owner', 'admin', 'operator'])
+    );
+
+CREATE POLICY "Operadores pueden actualizar enlaces compartidos" ON public.share_links
+    FOR UPDATE TO authenticated
+    USING (
+        public.is_receipt_company_member(receipt_id, ARRAY['owner', 'admin', 'operator'])
+    )
+    WITH CHECK (
+        public.is_receipt_company_member(receipt_id, ARRAY['owner', 'admin', 'operator'])
+    );
+
+CREATE POLICY "Administradores pueden eliminar enlaces compartidos" ON public.share_links
+    FOR DELETE TO authenticated
+    USING (
+        public.is_receipt_company_member(receipt_id, ARRAY['owner', 'admin'])
+    );
+
+-- ==============================================================================
+-- 11. FUNCIÓN SEGURA PARA VALIDACIÓN PÚBLICA POR CÓDIGO QR (RPC)
 -- ==============================================================================
 CREATE OR REPLACE FUNCTION public.get_receipt_public_validation(p_code TEXT)
 RETURNS JSON AS $$
@@ -291,7 +349,6 @@ DECLARE
     v_company RECORD;
     v_result JSON;
 BEGIN
-    -- Buscar recibo por código de verificación sanitizado
     SELECT r.id, r.company_id, r.folio, r.internal_folio, r.receipt_type, r.payment_date, r.status, r.verification_code
     INTO v_receipt
     FROM public.receipts r
@@ -305,13 +362,11 @@ BEGIN
         );
     END IF;
 
-    -- Obtener únicamente el nombre o razón social de la empresa emisora
     SELECT c.name, c.business_name
     INTO v_company
     FROM public.companies c
     WHERE c.id = v_receipt.company_id;
 
-    -- Construir respuesta pública sanitizada (SIN datos personales ni financieros)
     v_result := pg_catalog.json_build_object(
         'is_valid', true,
         'company_name', pg_catalog.coalesce(v_company.business_name, v_company.name, 'Empresa Emisora'),
@@ -327,13 +382,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = '';
 
--- Revocar permisos heredados a PUBLIC y otorgar solo a roles necesarios
 REVOKE EXECUTE ON FUNCTION public.get_receipt_public_validation(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_receipt_public_validation(TEXT) TO anon, authenticated;
 
 -- ==============================================================================
--- 11. FUNCIÓN SEGURA PARA CONSULTA DE ENLACES COMPARTIDOS VÁLIDOS (RPC)
--- Minimiza datos: Omite tokens, IDs internos, CURP, NSS y datos no visuales
+-- 12. FUNCIÓN SEGURA PARA CONSULTA DE ENLACES COMPARTIDOS VÁLIDOS (RPC)
 -- ==============================================================================
 CREATE OR REPLACE FUNCTION public.get_shared_receipt(p_token TEXT)
 RETURNS JSON AS $$
@@ -345,7 +398,6 @@ DECLARE
     v_earnings JSON;
     v_deductions JSON;
 BEGIN
-    -- Validar token, vigencia y que no esté revocado
     SELECT expires_at, is_revoked, id, receipt_id INTO v_link
     FROM public.share_links
     WHERE token = p_token
@@ -356,28 +408,23 @@ BEGIN
         RETURN pg_catalog.json_build_object('is_valid', false, 'message', 'Enlace expirado o no válido.');
     END IF;
 
-    -- Incrementar contador de accesos
     UPDATE public.share_links
     SET access_count = access_count + 1
     WHERE id = v_link.id;
 
-    -- Obtener recibo
     SELECT * INTO v_receipt FROM public.receipts WHERE id = v_link.receipt_id AND deleted_at IS NULL;
     IF NOT FOUND THEN
         RETURN pg_catalog.json_build_object('is_valid', false, 'message', 'Recibo no encontrado.');
     END IF;
 
-    -- Obtener datos asociados
     SELECT name, business_name, rfc, address, phone, email, logo_url, slogan, primary_color, secondary_color, accent_color
     INTO v_company 
     FROM public.companies WHERE id = v_receipt.company_id;
 
-    -- Datos de la persona (OMITIENDO CURP, NSS, EMAIL, TELEFONO)
     SELECT full_name, internal_id, department, position, rfc, contract_type, bank_name, bank_account_masked
     INTO v_person 
     FROM public.people WHERE id = v_receipt.person_id;
 
-    -- Percepciones (solo campos visuales)
     SELECT pg_catalog.coalesce(
         pg_catalog.json_agg(
             pg_catalog.json_build_object(
@@ -390,7 +437,6 @@ BEGIN
     ) INTO v_earnings
     FROM public.receipt_earnings e WHERE e.receipt_id = v_receipt.id;
 
-    -- Deducciones (solo campos visuales)
     SELECT pg_catalog.coalesce(
         pg_catalog.json_agg(
             pg_catalog.json_build_object(
@@ -443,7 +489,7 @@ REVOKE EXECUTE ON FUNCTION public.get_shared_receipt(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_shared_receipt(TEXT) TO anon, authenticated;
 
 -- ==============================================================================
--- 12. FUNCIÓN ATÓMICA DE FOLIOS
+-- 13. FUNCIÓN ATÓMICA DE FOLIOS CON COMPROBACIÓN DE AUTORIZACIÓN
 -- ==============================================================================
 CREATE OR REPLACE FUNCTION public.get_next_folio(p_company_id TEXT)
 RETURNS TEXT AS $$
@@ -452,6 +498,14 @@ DECLARE
     v_num INT;
     v_formatted_folio TEXT;
 BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Usuario no autenticado';
+    END IF;
+
+    IF NOT public.is_company_member(p_company_id, ARRAY['owner', 'admin', 'operator']) THEN
+        RAISE EXCEPTION 'No autorizado para generar folios de esta empresa';
+    END IF;
+
     SELECT folio_prefix, next_folio_number 
     INTO v_prefix, v_num
     FROM public.companies
@@ -476,101 +530,69 @@ REVOKE EXECUTE ON FUNCTION public.get_next_folio(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_next_folio(TEXT) TO authenticated;
 
 -- ==============================================================================
--- 13. POLÍTICAS DE ALMACENAMIENTO (STORAGE) CON AISLAMIENTO MULTIEMPRESA
+-- 14. POLÍTICAS DE ALMACENAMIENTO (STORAGE) CON AISLAMIENTO MULTIEMPRESA
 -- ==============================================================================
--- 13.1. BUCKET PÚBLICO: company-public-assets (public = true)
--- Estructura: {company_id}/logos/{filename} o {company_id}/letterheads/{filename}
--- NOTA DE SEGURIDAD: NO se crea ninguna política SELECT pública.
--- La descarga directa funciona por la propiedad public = true del bucket.
--- La ausencia de política SELECT impide a usuarios anónimos listar el bucket con list().
-
--- Subida: Exclusivamente miembros autenticados de la empresa
+-- 14.1. BUCKET PÚBLICO: company-public-assets (public = true)
 CREATE POLICY "Subida de logos por miembros de empresa" ON storage.objects
     FOR INSERT TO authenticated
     WITH CHECK (
         bucket_id = 'company-public-assets'
-        AND pg_catalog.split_part(name, '/', 1) IN (
-            SELECT company_id::text FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
+        AND public.is_company_member(pg_catalog.split_part(name, '/', 1), ARRAY['owner', 'admin', 'operator'])
         AND pg_catalog.split_part(name, '/', 2) IN ('logos', 'letterheads')
     );
 
--- Modificación: Exclusivamente administradores de la empresa (USING y WITH CHECK)
 CREATE POLICY "Modificación de logos por administradores" ON storage.objects
     FOR UPDATE TO authenticated
     USING (
         bucket_id = 'company-public-assets'
-        AND pg_catalog.split_part(name, '/', 1) IN (
-            SELECT company_id::text FROM public.company_members 
-            WHERE user_id::text = auth.uid()::text AND role IN ('owner', 'admin')
-        )
+        AND public.is_company_member(pg_catalog.split_part(name, '/', 1), ARRAY['owner', 'admin'])
         AND pg_catalog.split_part(name, '/', 2) IN ('logos', 'letterheads')
     )
     WITH CHECK (
         bucket_id = 'company-public-assets'
-        AND pg_catalog.split_part(name, '/', 1) IN (
-            SELECT company_id::text FROM public.company_members 
-            WHERE user_id::text = auth.uid()::text AND role IN ('owner', 'admin')
-        )
+        AND public.is_company_member(pg_catalog.split_part(name, '/', 1), ARRAY['owner', 'admin'])
         AND pg_catalog.split_part(name, '/', 2) IN ('logos', 'letterheads')
     );
 
--- Eliminación: Exclusivamente administradores de la empresa
 CREATE POLICY "Eliminación de logos por administradores" ON storage.objects
     FOR DELETE TO authenticated
     USING (
         bucket_id = 'company-public-assets'
-        AND pg_catalog.split_part(name, '/', 1) IN (
-            SELECT company_id::text FROM public.company_members 
-            WHERE user_id::text = auth.uid()::text AND role IN ('owner', 'admin')
-        )
+        AND public.is_company_member(pg_catalog.split_part(name, '/', 1), ARRAY['owner', 'admin'])
         AND pg_catalog.split_part(name, '/', 2) IN ('logos', 'letterheads')
     );
 
--- 13.2. BUCKET PRIVADO: receipt-private-assets (public = false)
--- Estructura: {company_id}/{receipt_id}/{filename}
--- Rol anon NO tiene permiso de SELECT.
+-- 14.2. BUCKET PRIVADO: receipt-private-assets (public = false)
 CREATE POLICY "Lectura privada restringida a miembros de la empresa" ON storage.objects
     FOR SELECT TO authenticated
     USING (
         bucket_id = 'receipt-private-assets'
-        AND pg_catalog.split_part(name, '/', 1) IN (
-            SELECT company_id::text FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
+        AND public.is_company_member(pg_catalog.split_part(name, '/', 1), NULL)
     );
 
 CREATE POLICY "Subida privada restringida a miembros de la empresa" ON storage.objects
     FOR INSERT TO authenticated
     WITH CHECK (
         bucket_id = 'receipt-private-assets'
-        AND pg_catalog.split_part(name, '/', 1) IN (
-            SELECT company_id::text FROM public.company_members WHERE user_id::text = auth.uid()::text
-        )
+        AND public.is_company_member(pg_catalog.split_part(name, '/', 1), ARRAY['owner', 'admin', 'operator'])
     );
 
 CREATE POLICY "Modificación privada restringida a administradores" ON storage.objects
     FOR UPDATE TO authenticated
     USING (
         bucket_id = 'receipt-private-assets'
-        AND pg_catalog.split_part(name, '/', 1) IN (
-            SELECT company_id::text FROM public.company_members 
-            WHERE user_id::text = auth.uid()::text AND role IN ('owner', 'admin')
-        )
+        AND public.is_company_member(pg_catalog.split_part(name, '/', 1), ARRAY['owner', 'admin'])
     )
     WITH CHECK (
         bucket_id = 'receipt-private-assets'
-        AND pg_catalog.split_part(name, '/', 1) IN (
-            SELECT company_id::text FROM public.company_members 
-            WHERE user_id::text = auth.uid()::text AND role IN ('owner', 'admin')
-        )
+        AND public.is_company_member(pg_catalog.split_part(name, '/', 1), ARRAY['owner', 'admin'])
     );
 
 CREATE POLICY "Eliminación privada restringida a propietarios" ON storage.objects
     FOR DELETE TO authenticated
     USING (
         bucket_id = 'receipt-private-assets'
-        AND pg_catalog.split_part(name, '/', 1) IN (
-            SELECT company_id::text FROM public.company_members 
-            WHERE user_id::text = auth.uid()::text AND role = 'owner'
-        )
+        AND public.is_company_member(pg_catalog.split_part(name, '/', 1), ARRAY['owner'])
     );
+
+COMMIT;
