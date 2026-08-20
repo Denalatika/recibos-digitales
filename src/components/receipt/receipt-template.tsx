@@ -169,7 +169,7 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
       </div>
 
       {/* CUERPO DEL RECIBO */}
-      <div className="p-3 space-y-2">
+      <div className="p-3 space-y-2.5">
         {/* 2. SECCIÓN DE LA PERSONA / COLABORADOR */}
         <div className="border-b border-slate-200 pb-1.5">
           <div className="flex items-center justify-between mb-1">
@@ -223,7 +223,7 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
           </div>
         </div>
 
-        {/* 3. TABLAS DE PERCEPCIONES, DEDUCCIONES Y NETO (Ajustadas sin espacio blanco excesivo) */}
+        {/* 3. TABLAS DE PERCEPCIONES, DEDUCCIONES Y NETO (Con espaciado vertical holgado por fila) */}
         <div className="grid grid-cols-12 gap-2.5 items-stretch">
           {/* Tabla 1: Percepciones (5 cols) */}
           <div className="col-span-5 rounded border border-slate-200 overflow-hidden flex flex-col justify-between">
@@ -237,24 +237,28 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
               <table className="w-full text-[9.5px] border-collapse" style={{ tableLayout: 'fixed' }}>
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-600 font-bold bg-slate-50">
-                    <th className="py-1 px-2 text-left" style={{ width: '48%' }}>CONCEPTO</th>
+                    <th className="py-1 px-2 text-left" style={{ width: '50%' }}>CONCEPTO</th>
                     <th className="py-1 px-1 text-center" style={{ width: '24%' }}>REF</th>
-                    <th className="py-1 px-2 text-right" style={{ width: '28%' }}>IMPORTE</th>
+                    <th className="py-1 px-2 text-right" style={{ width: '26%' }}>IMPORTE</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {earnings.map((e, idx) => (
-                    <tr key={e.id || idx}>
-                      <td className="py-0.5 px-2 font-medium text-slate-800 leading-snug">{e.concept}</td>
-                      <td className="py-0.5 px-1 text-[8.5px] text-center text-slate-500 whitespace-nowrap">{e.reference || '-'}</td>
-                      <td className="py-0.5 px-2 text-right font-semibold text-slate-900 whitespace-nowrap">
+                    <tr key={e.id || idx} className="border-b border-slate-100 last:border-b-0">
+                      <td className="py-1.5 px-2 font-medium text-slate-800 leading-normal align-middle">
+                        {e.concept}
+                      </td>
+                      <td className="py-1.5 px-1 text-[8.5px] text-center text-slate-500 whitespace-nowrap align-middle">
+                        {e.reference || '-'}
+                      </td>
+                      <td className="py-1.5 px-2 text-right font-semibold text-slate-900 whitespace-nowrap align-middle">
                         {formatCurrency(e.amount)}
                       </td>
                     </tr>
                   ))}
                   {earnings.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="py-2 text-center text-slate-400 italic text-[9px]">Sin percepciones</td>
+                      <td colSpan={3} className="py-3 text-center text-slate-400 italic text-[9px]">Sin percepciones</td>
                     </tr>
                   )}
                 </tbody>
@@ -269,7 +273,7 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
             </div>
           </div>
 
-          {/* Tabla 2: Deducciones (4 cols con anchos holgados para evitar traslapes) */}
+          {/* Tabla 2: Deducciones (4 cols con anchos holgados y filas sin encimarse) */}
           <div className="col-span-4 rounded border border-slate-200 overflow-hidden flex flex-col justify-between">
             <div>
               <div 
@@ -281,24 +285,28 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
               <table className="w-full text-[9.5px] border-collapse" style={{ tableLayout: 'fixed' }}>
                 <thead>
                   <tr className="border-b border-slate-200 text-slate-600 font-bold bg-slate-50">
-                    <th className="py-1 px-1.5 text-left" style={{ width: '38%' }}>CONCEPTO</th>
-                    <th className="py-1 px-1 text-center" style={{ width: '30%' }}>REF</th>
+                    <th className="py-1 px-1.5 text-left" style={{ width: '40%' }}>CONCEPTO</th>
+                    <th className="py-1 px-1 text-center" style={{ width: '28%' }}>REF</th>
                     <th className="py-1 px-1.5 text-right" style={{ width: '32%' }}>IMPORTE</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {deductions.map((d, idx) => (
-                    <tr key={d.id || idx}>
-                      <td className="py-0.5 px-1.5 font-medium text-slate-800 leading-snug">{d.concept}</td>
-                      <td className="py-0.5 px-1 text-[8px] text-center text-slate-500 whitespace-nowrap">{d.reference || '-'}</td>
-                      <td className="py-0.5 px-1.5 text-right font-semibold text-slate-900 whitespace-nowrap">
+                    <tr key={d.id || idx} className="border-b border-slate-100 last:border-b-0">
+                      <td className="py-1.5 px-1.5 font-medium text-slate-800 leading-normal align-middle">
+                        {d.concept}
+                      </td>
+                      <td className="py-1.5 px-1 text-[8px] text-center text-slate-500 whitespace-nowrap align-middle">
+                        {d.reference || '-'}
+                      </td>
+                      <td className="py-1.5 px-1.5 text-right font-semibold text-slate-900 whitespace-nowrap align-middle">
                         {formatCurrency(d.amount)}
                       </td>
                     </tr>
                   ))}
                   {deductions.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="py-2 text-center text-slate-400 italic text-[9px]">Sin deducciones</td>
+                      <td colSpan={3} className="py-3 text-center text-slate-400 italic text-[9px]">Sin deducciones</td>
                     </tr>
                   )}
                 </tbody>
@@ -340,7 +348,7 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
           </div>
         </div>
 
-        {/* 4. SECCIÓN INFERIOR: INFORMACIÓN DE PAGO, VALIDACIÓN Y FIRMA (Sin firma de texto falsa) */}
+        {/* 4. SECCIÓN INFERIOR: INFORMACIÓN DE PAGO, VALIDACIÓN Y FIRMA */}
         <div className="border-t border-slate-200 pt-2 grid grid-cols-12 gap-3 items-center">
           {/* Información de Pago (5 cols) */}
           <div className="col-span-5 space-y-1 text-[9px]">
